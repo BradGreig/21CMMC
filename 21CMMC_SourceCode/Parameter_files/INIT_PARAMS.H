@@ -29,23 +29,13 @@
 
 
 /******** BEGIN USER CHANGABLE DEFINITIONS   **********/
-//#define RANDOM_SEED (long) (300) // seed for the random number generator (used for MCMC runs currently)
 #define RANDOM_SEED (long) (1000)
 
-//#define BOX_LEN (float) 500 // in Mpc
 #define BOX_LEN (float) 250 // in Mpc
-//#define DIM (int) 1536 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define DIM (int) 1024 // number of cells for the high-res box (sampling ICs) along a principal axis
 #define DIM (int) 768 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define DIM (int) 512 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define DIM (int) 256 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define HII_DIM (int) 768 // number of cells for the low-res box; recommended to be an integer multiple of DIM
-//#define HII_DIM (int) 512 // number of cells for the low-res box; recommended to be an integer multiple of DIM
-//#define HII_DIM (int) 256 // number of cells for the low-res box; recommended to be an integer multiple of DIM
 #define HII_DIM (int) 128 // number of cells for the low-res box; recommended to be an integer multiple of DIM
 
 /****** New in v1.1. ****** Threading parameters  ***/
-//#define NUMCORES (int) 24 // # of cores you wish to allocate (shared mem)
 #define NUMCORES (int) 1 // # of cores you wish to allocate (shared mem)
 #define RAM (float) 14 // physical memory in GB available
 /******** END USER CHANGABLE DEFINITIONS   **********/
