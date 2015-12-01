@@ -13,4 +13,4 @@ within the 21CMMC_SourceCode directory (in Programs)
 
 Any questions, comments or feedback (including technical support and setting up) should be directed 
 to me (Bradley Greig) at bradley.greig@sns.it. If you use this code in any of your work, please cite
-the above paper. 
+the above paper and link to this repository. 
