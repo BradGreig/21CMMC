@@ -1,6 +1,10 @@
 # 21CMMC
 A parallelised, Monte Carlo Markov Chain analysis tool for the epoch of reionisation (EoR)
 
+Latest release: 24/06/2016
+- Added support of observational priors
+- Added a fourth parameter (power-law index) for mass-dependent ionising efficiency
+
 21CMMC is a fast and efficient Python sampler of the semi-numerical reionisation simulation code 21cmFAST. It 
 can recover constraints on astrophysical parameters from current or future 21 cm EoR experiments, accommodating 
 a variety of EoR models, as well as priors on individual model parameters and the reionisation history. 
