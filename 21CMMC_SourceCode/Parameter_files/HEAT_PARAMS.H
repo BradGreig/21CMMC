@@ -16,7 +16,7 @@ NOTE:  We encourage the user to perform their own convergance tests if modifying
   Efficiency parameter corresponding to the number of x-ray photons per
   solar mass in stars.
 */
-#define ZETA_X (double) 1.0e57 // 10^57 ~ 1.7 X-ray photons per stelar baryon
+#define ZETA_X (double) 1.0e56 // 10^57 ~ 1.7 X-ray photons per stelar baryon
 
 
 /*
@@ -36,7 +36,7 @@ NOTE:  We encourage the user to perform their own convergance tests if modifying
 /*
   X-Ray spectral index at frequencies higher than NU_X_THRESH
  */
-#define X_RAY_SPEC_INDEX (double) 1.5
+#define X_RAY_SPEC_INDEX (double) 1.2
 
 
 /*

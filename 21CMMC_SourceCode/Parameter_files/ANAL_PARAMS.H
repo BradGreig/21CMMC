@@ -15,7 +15,7 @@
        since the discretization of the halo mass by the halo finder might lead
        to redshift discontinuities.
 */
-#define ION_Tvir_MIN (double) 2e4
+#define ION_Tvir_MIN (double) 1e4
 
 
 /*
@@ -48,7 +48,7 @@
    a bubble is said to be ionized if it's collapsed fraction is
    greater than 1/HII_EFF_FACTOR
 */
-#define HII_EFF_FACTOR (float) 100
+#define HII_EFF_FACTOR (float) 31.5
 
 
 
@@ -75,7 +75,6 @@
 */
 #define FIND_BUBBLE_ALGORITHM (int) 2
 
-
 /*
   Maximum allowed bubble size (presumably set by recombinations or ionizing photon
   m.f.p. in most case.  The bubble filtering procedure uses the minimum
@@ -84,6 +83,12 @@
   field is extreemly insensitive to this choice)
 */
 #define R_BUBBLE_MAX (float) 30
+
+/* 
+   Minimum radius of an HII region in cMpc.  One can set this to 0, but should be careful with
+   shot noise if the find_HII_bubble algorithm is run on a fine, non-linear density grid.
+ */
+#define R_BUBBLE_MIN (float) 1 
 
 
 /*
@@ -110,7 +115,7 @@
   it is recommended to turn off this feature, as halos can stocastically
   "pop in and out of" existance from one redshift to the next...
 */
-#define N_POISSON (int) 50
+#define N_POISSON (int) -1
 
 
 /*

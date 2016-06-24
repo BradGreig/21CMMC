@@ -1,70 +1,55 @@
+#ifndef _BUBBLE_HELPERS_
+#define _BUBBLE_HELPERS_
+
 #include "../Parameter_files/INIT_PARAMS.H"
 #include "../Parameter_files/ANAL_PARAMS.H"
 
 
 void HII_filter(fftwf_complex *box, int filter_type, float R){
   int n_x, n_z, n_y;
-  float k_x, k_y, k_z, k_mag, k_mag_x, k_mag_y,kR;
+  float k_x, k_y, k_z, k_mag, kR;
 
-#pragma omp parallel shared(box, filter_type, R) private(k_x, k_y, k_z, k_mag, k_mag_x, k_mag_y, kR, n_x, n_z, n_y)
+#pragma omp parallel shared(box, filter_type, R) private(k_x, k_y, k_z, k_mag, kR, n_x, n_z, n_y)
 {
 
   // loop through k-box
 #pragma omp for 
-    for (n_x=0; n_x<HII_DIM; n_x++){
-        if (n_x>HII_MIDDLE) {
-//            k_x =(n_x-HII_DIM) * DELTA_K;
-            k_mag_x = (n_x-HII_DIM)*(n_x-HII_DIM);
-        }
-        else {
-//            k_x = n_x * DELTA_K;
-            k_mag_x = n_x*n_x;
-        }
+  for (n_x=0; n_x<HII_DIM; n_x++){
+    if (n_x>HII_MIDDLE) {k_x =(n_x-HII_DIM) * DELTA_K;}
+    else {k_x = n_x * DELTA_K;}
 
-//        k_mag_x = k_x*k_x;
-        
-        for (n_y=0; n_y<HII_DIM; n_y++){
-            if (n_y>HII_MIDDLE) {
-//                k_y =(n_y-HII_DIM) * DELTA_K;
-                k_mag_y = (n_y-HII_DIM)*(n_y-HII_DIM);
-            }
-            else {
-//                k_y = n_y * DELTA_K;
-                k_mag_y = n_y*n_y;
-            }
+    for (n_y=0; n_y<HII_DIM; n_y++){
+      if (n_y>HII_MIDDLE) {k_y =(n_y-HII_DIM) * DELTA_K;}
+      else {k_y = n_y * DELTA_K;}
 
-//            k_mag_y = k_y*k_y;
-            
-            for (n_z=0; n_z<=HII_MIDDLE; n_z++){
-//                k_z = n_z * DELTA_K;
+      for (n_z=0; n_z<=HII_MIDDLE; n_z++){ 
+	k_z = n_z * DELTA_K;
 	
-//                k_mag = sqrt(k_mag_x + k_mag_y + k_z*k_z);
-                k_mag = sqrt(k_mag_x + k_mag_y + n_z*n_z)*DELTA_K;
+	k_mag = sqrt(k_x*k_x + k_y*k_y + k_z*k_z);
 
-                kR = k_mag*R; // real space top-hat
-                if (filter_type == 0){ // real space top-hat
-                    if (kR > 1e-4){
-//                        box[HII_C_INDEX(n_x, n_y, n_z)] *= 3.0 * (sin(kR)/pow(kR, 3) - cos(kR)/pow(kR, 2));
-                        box[HII_C_INDEX(n_x, n_y, n_z)] *= 3.0 * (sin(kR)/(kR*kR*kR) - cos(kR)/(kR*kR));
-                    }
-                }
-                else if (filter_type == 1){ // k-space top hat
-                    kR *= 0.413566994; // equates integrated volume to the real space top-hat (9pi/2)^(-1/3)
-                    if (kR > 1){
-                        box[HII_C_INDEX(n_x, n_y, n_z)] = 0;
-                    }
-                }
-                else if (filter_type == 2){ // gaussian
-                    kR *= 0.643; // equates integrated volume to the real space top-hat
-                    box[HII_C_INDEX(n_x, n_y, n_z)] *= pow(E, -kR*kR/2.0);
-                }
-                else{
-                    if ( (n_x==0) && (n_y==0) && (n_z==0) )
-                        fprintf(stderr, "HII_filter.c: Warning, filter type %i is undefined\nBox is unfiltered\n", filter_type);
-                }
-            }
-        }
-    } // end looping through k box
+	kR = k_mag*R; // real space top-hat
+	if (filter_type == 0){ // real space top-hat
+	  if (kR > 1e-4){
+	    box[HII_C_INDEX(n_x, n_y, n_z)] *= 3.0 * (sin(kR)/pow(kR, 3) - cos(kR)/pow(kR, 2));
+	  }
+	}
+	else if (filter_type == 1){ // k-space top hat
+	  kR *= 0.413566994; // equates integrated volume to the real space top-hat (9pi/2)^(-1/3)
+	  if (kR > 1){
+	    box[HII_C_INDEX(n_x, n_y, n_z)] = 0;
+	  }
+	}
+	else if (filter_type == 2){ // gaussian
+	  kR *= 0.643; // equates integrated volume to the real space top-hat
+	  box[HII_C_INDEX(n_x, n_y, n_z)] *= pow(E, -kR*kR/2.0);
+	}
+	else{
+	  if ( (n_x==0) && (n_y==0) && (n_z==0) )
+	    fprintf(stderr, "HII_filter.c: Warning, filter type %i is undefined\nBox is unfiltered\n", filter_type);
+	}
+      }
+    }
+  } // end looping through k box
   
 }
  return;
@@ -464,3 +449,6 @@ void update_in_sphere(float * box, int dimensions, float R, float xf, float yf, 
   check_region(box, dimensions, Rsq_curr_index, x,y,z, xb_min, xb_max, yb_min, yb_max, zb_min, zl_min);
   check_region(box, dimensions, Rsq_curr_index, x,y,z, xb_min, xb_max, yb_min, yb_max, zl_max, zb_max);
 }
+
+
+#endif

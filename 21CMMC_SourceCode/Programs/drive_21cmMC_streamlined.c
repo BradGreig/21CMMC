@@ -2,12 +2,24 @@
 #include "../Parameter_files/ANAL_PARAMS.H"
 #include "Variables.h"
 #include "bubble_helper_progs.c"
-#include "filter.c"
+#include "heating_helper_progs.c"
 #include "gsl/gsl_sf_erf.h"
+
+/* Throughout this and other 21cmMC drivers, the use of Deltac is not for checking against
+ the z=0 collapsed fraction, but rather, it is used as a threshold for the validity of the
+ collapse fraction expression. This expression is only valid up to Deltac
+ */
 
 /**** Arrays declared and used *****/
 
 void init_21cmMC_arrays() {
+    
+    Overdense_spline_GL_low = calloc(Nlow,sizeof(float));
+    Fcoll_spline_GL_low = calloc(Nlow,sizeof(float));
+    second_derivs_low_GL = calloc(Nlow,sizeof(float));
+    Overdense_spline_GL_high = calloc(Nhigh,sizeof(float));
+    Fcoll_spline_GL_high = calloc(Nhigh,sizeof(float));
+    second_derivs_high_GL = calloc(Nhigh,sizeof(float));
     
     xH = (float *) fftwf_malloc(sizeof(float)*HII_TOT_NUM_PIXELS);
     
@@ -39,6 +51,12 @@ void init_21cmMC_arrays() {
     
     deldel_T = (fftwf_complex *) fftwf_malloc(sizeof(fftwf_complex)*HII_KSPACE_NUM_PIXELS);
 
+    xi_low = calloc((NGLlow+1),sizeof(float));
+    wi_low = calloc((NGLlow+1),sizeof(float));
+    
+    xi_high = calloc((NGLhigh+1),sizeof(float));
+    wi_high = calloc((NGLhigh+1),sizeof(float));
+    
 }
 
 void destroy_21cmMC_arrays() {
@@ -58,6 +76,25 @@ void destroy_21cmMC_arrays() {
     free(in_bin_ct);
     
     fftwf_free(deldel_T);
+    
+    free(Overdense_spline_GL_low);
+    free(Fcoll_spline_GL_low);
+    free(second_derivs_low_GL);
+    free(Overdense_spline_GL_high);
+    free(Fcoll_spline_GL_high);
+    free(second_derivs_high_GL);
+    
+    free(xi_low);
+    free(wi_low);
+    
+    free(xi_high);
+    free(wi_high);
+    
+    free(Mass_Spline);
+    free(Sigma_Spline);
+    free(dSigmadm_Spline);
+    free(second_derivs_sigma);
+    free(second_derivs_dsigma);
 }
 
 int main(int argc, char ** argv){
@@ -69,7 +106,7 @@ int main(int argc, char ** argv){
     fftwf_plan plan;
     
     // Various parameters to be used for the MCMC code
-    float INDIVIDUAL_ID,REDSHIFT, ION_EFF_FACTOR, MFP, TVIR_MIN,ALPHA;
+    float INDIVIDUAL_ID,REDSHIFT, ION_EFF_FACTOR, MFP, TVIR_MIN, ALPHA, MFEEDBACK;
     int PERFORM_PS,short_completely_ionised;
     
     // Other parameters used in the code
@@ -79,10 +116,10 @@ int main(int argc, char ** argv){
 	float ave_N_min_cell, M_MIN;
 	int x,y,z, N_min_cell, LAST_FILTER_STEP;
 	unsigned long long ion_ct;
-	float f_coll_crit, pixel_volume, density_over_mean, erfc_num, erfc_denom, erfc_denom_cell, res_xH, Splined_Fcoll;
+	float f_coll_crit, pixel_volume, density_over_mean, erfc_num, erfc_denom, erfc_denom_cell, res_xH, Splined_Fcoll, sqrtarg;
 	float xHI_from_xrays, std_xrays;
 	
-    double global_xH, global_step_xH, ave_xHI_xrays, ave_den, ST_over_PS, mean_f_coll_st, mean_f_coll_ps, f_coll, ave_fcoll;
+    double global_xH, global_step_xH, ave_xHI_xrays, ave_den, ST_over_PS, mean_f_coll_st, f_coll, ave_fcoll;
 	const gsl_rng_type * T;
 	gsl_rng * r;
 
@@ -106,7 +143,7 @@ int main(int argc, char ** argv){
 	/***************   BEGIN INITIALIZATION   **************************/
 			 
 // Redshift will remain constant through out the driver (handed to it by MCMC code)
-	   
+	       
 	REDSHIFT = atof(argv[1]);
     INDIVIDUAL_ID = atof(argv[2]);
 	ION_EFF_FACTOR = atof(argv[3]);
@@ -114,7 +151,15 @@ int main(int argc, char ** argv){
     TVIR_MIN = pow(10.,atof(argv[5]));
 
 //  PERFORM PS flag decides whether or not to perform the PS computation (for example neutral fraction prior checking does not compute the PS)
-    PERFORM_PS = atof(argv[6]);
+    
+    if (argc == 7) {
+        ALPHA = 0.;
+        PERFORM_PS = atof(argv[6]);
+    }
+    if (argc == 8) {
+        ALPHA = atof(argv[6]);
+        PERFORM_PS = atof(argv[7]);
+    }
     
 	// perform a very rudimentary check to see if we are underresolved and not using the linear approx
 	if ((BOX_LEN > DIM) && !EVOLVE_DENSITY_LINEARLY){
@@ -183,18 +228,26 @@ int main(int argc, char ** argv){
     }
 	
 	// lets check if we are going to bother with computing the inhmogeneous field at all...
-	mean_f_coll_st = FgtrM_st(REDSHIFT, M_MIN);
-	mean_f_coll_ps = FgtrM(REDSHIFT, M_MIN);
+
+    MFEEDBACK = M_MIN;
+    
+    if(ALPHA != 0.) {
+        mean_f_coll_st = FgtrM_st_PL(REDSHIFT,M_MIN,MFEEDBACK,ALPHA);
+    }
+    else {
+        mean_f_coll_st = FgtrM_st(REDSHIFT, M_MIN);
+    }
 	if (mean_f_coll_st/f_coll_crit < HII_ROUND_ERR){ // way too small to ionize anything...
 		printf( "The ST mean collapse fraction is %e, which is much smaller than the effective critical collapse fraction of %e\n I will just declare everything to be neutral\n", mean_f_coll_st, f_coll_crit);
 		
         // find the neutral fraction
-        global_xH = 1;
         
+        init_heat();
+        global_xH = 1 - xion_RECFAST(REDSHIFT, 0);
+        destruct_heat();
         for (ct=0; ct<HII_TOT_NUM_PIXELS; ct++){
-            xH[ct] = 1;
+            xH[ct] = global_xH;
         }
-		// print out the xH box
 	}
 		
 	plan = fftwf_plan_dft_r2c_3d(HII_DIM, HII_DIM, HII_DIM, (float *)deltax_unfiltered, (fftwf_complex *)deltax_unfiltered, FFTW_ESTIMATE);
@@ -218,9 +271,11 @@ int main(int argc, char ** argv){
     R_begin = R;
 	LAST_FILTER_STEP = 0;
     
+    initialiseSplinedSigmaM(M_MIN,1e16);
+    
 	while (!LAST_FILTER_STEP){//(R > (cell_length_factor*BOX_LEN/(HII_DIM+0.0))){
         
-        if ((R/DELTA_R_HII_FACTOR) <= (cell_length_factor*BOX_LEN/(float)HII_DIM)){
+        if ( ((R/DELTA_R_HII_FACTOR) <= (cell_length_factor*BOX_LEN/(float)HII_DIM)) || ((R/DELTA_R_HII_FACTOR) <= R_BUBBLE_MIN) ) {
 			LAST_FILTER_STEP = 1;
 		}
         
@@ -242,21 +297,46 @@ int main(int argc, char ** argv){
 			
             memcpy(deltax_unfiltered, deltax_unfiltered_original, sizeof(fftwf_complex)*HII_KSPACE_NUM_PIXELS);
             
-            erfc_denom_cell = sqrt( 2*(pow(sigma_z0(M_MIN), 2) - pow(sigma_z0(RtoM(cell_length_factor*BOX_LEN/(float)HII_DIM)), 2) ) );
-            if (erfc_denom_cell < 0){  // our filtering scale has become too small
-                printf("Surely not in here!\n");
+            sqrtarg = 2*(pow(sigma_z0(M_MIN), 2) - pow(sigma_z0(RtoM(cell_length_factor*BOX_LEN/(float)HII_DIM)), 2) );
+            if (sqrtarg < 0){  // our filtering scale has become too small
                 break;
             }
+            erfc_denom_cell = sqrt(sqrtarg);
+            
+            if(ALPHA!=0.) {
+                initialiseGL_Fcoll(NGLlow,NGLhigh,M_MIN,RtoM(cell_length_factor*BOX_LEN/(float)HII_DIM));
+                initialiseFcoll_spline(REDSHIFT,M_MIN,RtoM(cell_length_factor*BOX_LEN/(float)HII_DIM),RtoM(cell_length_factor*BOX_LEN/(float)HII_DIM),MFEEDBACK,ALPHA);
+            }
+            
+            
+            
+            
                 
             // renormalize the collapse fraction so that the mean matches ST,
             // since we are using the evolved (non-linear) density field
             for (x=0; x<HII_DIM; x++){
                 for (y=0; y<HII_DIM; y++){
                     for (z=0; z<HII_DIM; z++){
-                        density_over_mean = 1.0 + *((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z));
-                        erfc_num = (Deltac - (density_over_mean-1)) /  growth_factor;
-                        f_coll += splined_erfc(erfc_num/erfc_denom_cell);
-                        Fcoll[HII_R_FFT_INDEX(x,y,z)] = splined_erfc(erfc_num/erfc_denom_cell);
+                        
+                        if(ALPHA!=0.) {
+                            if(*((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z)) < Deltac) {
+                                
+                                FcollSpline(*((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z)),&(Splined_Fcoll));
+                                Fcoll[HII_R_FFT_INDEX(x,y,z)] = Splined_Fcoll;
+                            
+                                f_coll += Splined_Fcoll;
+                            }
+                            else {
+                                f_coll += 1.;
+                            }
+                        }
+                        else {
+                        
+                            density_over_mean = 1.0 + *((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z));
+                            erfc_num = (Deltac - (density_over_mean-1)) /  growth_factor;
+                            f_coll += splined_erfc(erfc_num/erfc_denom_cell);
+                            Fcoll[HII_R_FFT_INDEX(x,y,z)] = splined_erfc(erfc_num/erfc_denom_cell);
+                        }
                     }
                 }
             }
@@ -274,15 +354,38 @@ int main(int argc, char ** argv){
                 break;
             }
             
+            if(ALPHA!=0.) {
+                initialiseGL_Fcoll(NGLlow,NGLhigh,M_MIN,RtoM(R));
+                initialiseFcoll_spline(REDSHIFT,M_MIN,RtoM(R),RtoM(R),MFEEDBACK,ALPHA);
+            }
+            
+            
             // renormalize the collapse fraction so that the mean matches ST,
             // since we are using the evolved (non-linear) density field
+
             for (x=0; x<HII_DIM; x++){
                 for (y=0; y<HII_DIM; y++){
                     for (z=0; z<HII_DIM; z++){
-                        density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));
-                        erfc_num = (Deltac - (density_over_mean-1)) /  growth_factor;
-                        f_coll += splined_erfc(erfc_num/erfc_denom);
-                        Fcoll[HII_R_FFT_INDEX(x,y,z)] = splined_erfc(erfc_num/erfc_denom);
+                        
+                        if(ALPHA!=0.) {
+                            
+                            if(*((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z)) < Deltac) {
+                                
+                                FcollSpline(*((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z)),&(Splined_Fcoll));
+                                Fcoll[HII_R_FFT_INDEX(x,y,z)] = Splined_Fcoll;
+                                f_coll += Splined_Fcoll;
+                            }
+                            else {
+                                f_coll += 1.0;
+                            }
+                        }
+                        else {
+                        
+                            density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));
+                            erfc_num = (Deltac - (density_over_mean-1)) /  growth_factor;
+                            f_coll += splined_erfc(erfc_num/erfc_denom);
+                            Fcoll[HII_R_FFT_INDEX(x,y,z)] = splined_erfc(erfc_num/erfc_denom);
+                        }
                     }
                 }
             }
@@ -298,19 +401,85 @@ int main(int argc, char ** argv){
         for (x=0; x<HII_DIM; x++){
             for (y=0; y<HII_DIM; y++){
                 for (z=0; z<HII_DIM; z++){
-                    if (LAST_FILTER_STEP)
-                        density_over_mean = 1.0 + *((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z));
-                    else
-                        density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));
-					
-                    // check for aliasing which can occur for small R and small cell sizes,
-                    // since we are using the analytic form of the window function for speed and simplicity
-                    if (density_over_mean <= 0){
-                        //	    fprintf(LOG, "WARNING: aliasing during filtering step produced density n/<n> of %06.2f at cell (%i, %i, %i)\n Setting to 0\n", density_over_mean, x,y,z);
-                        density_over_mean = FRACT_FLOAT_ERR;
+                    if (LAST_FILTER_STEP) {
+                        
+                        if(ALPHA!=0.) {
+                        
+                            if(*((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z)) <= -1.) {
+                            
+                                FcollSpline((FRACT_FLOAT_ERR - 1.),&(Splined_Fcoll));
+                            
+                                f_coll = ST_over_PS * Splined_Fcoll;
+                            
+                            }
+                            else {
+                            
+                                if(*((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z)) < Deltac) {
+                                
+                                    f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+                                }
+                                else {
+                                    f_coll = 1.;
+                                }
+                            }
+                        }
+                        else {
+                            density_over_mean = 1.0 + *((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z));
+                            
+                            // check for aliasing which can occur for small R and small cell sizes,
+                            // since we are using the analytic form of the window function for speed and simplicity
+                            if (density_over_mean <= 0){
+                                density_over_mean = FRACT_FLOAT_ERR;
+                                
+                                erfc_num = (Deltac - (density_over_mean-1)) /  growth_factor;
+                                if (LAST_FILTER_STEP)
+                                    f_coll = ST_over_PS * splined_erfc(erfc_num/erfc_denom_cell);
+                                else
+                                    f_coll = ST_over_PS * splined_erfc(erfc_num/erfc_denom);
+                            }
+                            else {
+                                f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+                            }
+                        }
                     }
-										
-                    f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+                    else {
+                        
+                        if(ALPHA!=0.) {
+                            if(*((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z)) <= -1.) {
+                                FcollSpline((FRACT_FLOAT_ERR - 1.),&(Splined_Fcoll));
+                                f_coll = ST_over_PS * Splined_Fcoll;
+                            }
+                            else {
+                                if(*((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z)) < Deltac) {
+                                    
+                                    f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+                                }
+                                else {
+                                    f_coll = 1.;
+                                }
+                            }
+                                
+                        }
+                        else {
+                            density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));
+                            
+                            // check for aliasing which can occur for small R and small cell sizes,
+                            // since we are using the analytic form of the window function for speed and simplicity
+                            if (density_over_mean <= 0){
+                                density_over_mean = FRACT_FLOAT_ERR;
+                                
+                                erfc_num = (Deltac - (density_over_mean-1)) /  growth_factor;
+                                if (LAST_FILTER_STEP)
+                                    f_coll = ST_over_PS * splined_erfc(erfc_num/erfc_denom_cell);
+                                else
+                                    f_coll = ST_over_PS * splined_erfc(erfc_num/erfc_denom);
+                            }
+                            else {
+                                f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+                            }
+                            
+                        }
+                    }
 					
                     // adjust the denominator of the collapse fraction for the residual electron fraction in the neutral medium
                     xHI_from_xrays = 1;
@@ -335,15 +504,48 @@ int main(int argc, char ** argv){
                     // if so, assign partial ionizations to those cells which aren't fully ionized
                     else if (LAST_FILTER_STEP && (xH[HII_R_INDEX(x, y, z)] > TINY)){
                         
-                        f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
-                        if (f_coll>1) f_coll=1;
-                        ave_N_min_cell = f_coll * pixel_mass*density_over_mean / M_MIN; // ave # of M_MIN halos in cell
-                        if (ave_N_min_cell < N_POISSON){
-                            // the collapsed fraction is too small, lets add poisson scatter in the halo number
-                            N_min_cell = (int) gsl_ran_poisson(r, ave_N_min_cell);
-                            f_coll = N_min_cell * M_MIN / (pixel_mass*density_over_mean);
-                        }
+                        if(ALPHA!=0.) {
+                            
+                            if(*((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z)) <= -1.) {
+                                FcollSpline((FRACT_FLOAT_ERR - 1.),&(Splined_Fcoll));
+                                
+                                f_coll = ST_over_PS * Splined_Fcoll;
+                                
+                                ave_N_min_cell = f_coll * pixel_mass*(FRACT_FLOAT_ERR) / M_MIN; // ave # of M_MIN halos in cell
+                                
+                                if (ave_N_min_cell < N_POISSON){
+                                    N_min_cell = (int) gsl_ran_poisson(r, ave_N_min_cell);
+                                    f_coll = N_min_cell * M_MIN / (pixel_mass*FRACT_FLOAT_ERR);
+                                }
+                            }
+                            else {
+                                if(*((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z)) < Deltac) {
+                                    f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+                                }
+                                else {
+                                    f_coll = 1.;
+                                }
+                                
+                                ave_N_min_cell = f_coll * pixel_mass*(1. + *((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z))) / M_MIN; // ave # of M_MIN halos in cell
+                                
+                                if (ave_N_min_cell < N_POISSON){
+                                    N_min_cell = (int) gsl_ran_poisson(r, ave_N_min_cell);
+                                    f_coll = N_min_cell * M_MIN / (pixel_mass*(1. + *((float *)deltax_unfiltered + HII_R_FFT_INDEX(x,y,z))));
+                                }
+                            }
                         
+                        }
+                        else {
+                        
+                            f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+                            if (f_coll>1) f_coll=1;
+                            ave_N_min_cell = f_coll * pixel_mass*density_over_mean / M_MIN; // ave # of M_MIN halos in cell
+                            if (ave_N_min_cell < N_POISSON){
+                                // the collapsed fraction is too small, lets add poisson scatter in the halo number
+                                N_min_cell = (int) gsl_ran_poisson(r, ave_N_min_cell);
+                                f_coll = N_min_cell * M_MIN / (pixel_mass*density_over_mean);
+                            }
+                        }
                         if (f_coll>1) f_coll=1;
                         res_xH = xHI_from_xrays - f_coll * ION_EFF_FACTOR;
                         // and make sure fraction doesn't blow up for underdense pixels
@@ -388,7 +590,12 @@ int main(int argc, char ** argv){
 	/**** Perform 'delta_T.c' ******/
 	
     nf = global_xH;
-    sprintf(filename, "NeutralFraction_%s_%s_%s_%s.txt",argv[2],argv[3],argv[4],argv[5]);
+    if(ALPHA!=0.) {
+        sprintf(filename, "NeutralFraction_%s_%s_%s_%s_%s.txt",argv[2],argv[3],argv[4],argv[5],argv[6]);
+    }
+    else {
+        sprintf(filename, "NeutralFraction_%s_%s_%s_%s.txt",argv[2],argv[3],argv[4],argv[5]);
+    }
     F=fopen(filename, "wt");
     fprintf(F, "%lf\n",nf);
     fclose(F);
@@ -610,7 +817,12 @@ int main(int argc, char ** argv){
         } // end looping through k box
         
         // now lets print out the k bins
-        sprintf(filename, "delTps_estimate_%s_%s_%s_%s.txt",argv[2],argv[3],argv[4],argv[5]);
+        if(ALPHA!=0.) {
+            sprintf(filename, "delTps_estimate_%s_%s_%s_%s_%s.txt",argv[2],argv[3],argv[4],argv[5],argv[6]);
+        }
+        else {
+            sprintf(filename, "delTps_estimate_%s_%s_%s_%s.txt",argv[2],argv[3],argv[4],argv[5]);
+        }
         F=fopen(filename, "wt");
         for (ct=1; ct<NUM_BINS; ct++){
             if (in_bin_ct[ct]>0)

@@ -19,13 +19,24 @@ COSMO_FILES = 	${PARAMETER_DIR}/COSMOLOGY.H \
 	${PARAMETER_DIR}/HEAT_PARAMS.H \
 
 # object files
-OBJ_FILES = drive_21cmMC_streamlined
+OBJ_FILES = drive_21cmMC_streamlined \
+	find_HII_bubbles \
+	find_HII_bubbles_new \
+	find_HII_bubbles_new21cmFast \
+
+all: drive_21cmMC_streamlined ComputingTau_e
+
 #########################################################################
 
 drive_21cmMC_streamlined: drive_21cmMC_streamlined.c \
 	${COSMO_FILES} \
 
 	${CC} ${CPPFLAGS} -o drive_21cmMC_streamlined drive_21cmMC_streamlined.c ${LDFLAGS}
+
+ComputingTau_e: ComputingTau_e.c \
+	${COSMO_FILES} \
+
+	${CC} ${CPPFLAGS} -o ComputingTau_e ComputingTau_e.c ${LDFLAGS}
 
 clean:
 	rm ${OBJ_FILES} *~

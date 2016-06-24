@@ -21,6 +21,85 @@ static double log_erfc_table[ERFC_NPTS], erfc_params[ERFC_NPTS];
 static gsl_interp_accel *erfc_acc;
 static gsl_spline *erfc_spline;
 
+#define NR_END 1
+#define FREE_ARG char*
+
+#define MM 7
+#define NSTACK 50
+
+#define FUNC(x,y,z,xx,yy) ((*func)(x,y,z,xx,yy))
+#define FUNC2(x1,x2,x3,x4,x5,x6) ((*func)(x1,x2,x3,x4,x5,x6))
+#define EPS2 3.0e-11
+
+#define SWAP(a,b) tempr=(a);(a)=(b);(b)=tempr
+
+#define NGaussLegendre 40  //defines the number of points in the Gauss-Legendre quadrature integration
+
+#define SPLINE_NPTS (int) 250
+#define NGLhigh 100
+#define NGLlow 100
+
+#define Nhigh 200
+#define Nlow 100
+#define NMass 200
+
+static double log_MFspline_table[SPLINE_NPTS], MFspline_params[SPLINE_NPTS];
+static double log_MFspline_table_densgtr1[SPLINE_NPTS], MFspline_params_densgtr1[SPLINE_NPTS];
+static gsl_interp_accel *MFspline_acc, *MFspline_densgtr1_acc;
+static gsl_spline *MF_spline, *MF_spline_densgtr1;
+
+static double Fcoll_spline_params[SPLINE_NPTS], log_Fcoll_spline_table[SPLINE_NPTS];
+static gsl_interp_accel *Fcoll_spline_acc;
+static gsl_spline *Fcoll_spline;
+
+struct parameters_gsl_int_{
+    double z_obs;
+    double Mval;
+    double M_Feed;
+    double alpha_pl;
+    double del_traj_1;
+    double del_traj_2;
+};
+
+struct parameters_gsl_ST_int_{
+    double z_obs;
+    double M_Feed;
+    double alpha_pl;
+};
+
+unsigned long *lvector(long nl, long nh);
+void free_lvector(unsigned long *v, long nl, long nh);
+
+float *vector(long nl, long nh);
+void free_vector(float *v, long nl, long nh);
+
+void spline(float x[], float y[], int n, float yp1, float ypn, float y2[]);
+void splint(float xa[], float ya[], float y2a[], int n, float x, float *y);
+
+void gauleg(float x1, float x2, float x[], float w[], int n);
+
+double FgtrlnM_general(double lnM, void *params);
+double FgtrM_general(float z, float M1, float M_Max, float M2, float MFeedback, float alpha, float delta1, float delta2);
+
+float FgtrConditionalM_second(float z, float M1, float M2, float MFeedback, float alpha, float delta1, float delta2);
+float dNdM_conditional_second(float z, float M1, float M2, float delta1, float delta2);
+
+float FgtrConditionallnM(float M1, struct parameters_gsl_int_ parameters_gsl_int);
+float GaussLegengreQuad_Fcoll(int n, float z, float M2, float MFeedback, float alpha, float delta1, float delta2);
+
+float *Overdense_spline_gsl,*Overdense_spline_GL_high,*Fcoll_spline_gsl,*Fcoll_spline_GL_high,*xi_low,*xi_high,*wi_high,*wi_low;
+float *second_derivs_low_GL,*second_derivs_high_GL,*Overdense_spline_GL_low,*Fcoll_spline_GL_low;
+
+float *Mass_Spline, *Sigma_Spline, *dSigmadm_Spline, *second_derivs_sigma, *second_derivs_dsigma;
+
+void initialiseSplinedSigmaM(float M_Min, float M_Max);
+void initialiseGL_Fcoll(int n_low, int n_high, float M_Min, float M_Max);
+void initialiseGL_FcollDblPl(int n_low, int n_high, float M_Min, float M_feedback, float M_Max);
+void initialiseFcoll_spline(float z, float Mmin, float Mmax, float Mval, float MFeedback, float alphapl);
+
+double dFdlnM_st_PL (double lnM, void *params);
+double FgtrM_st_PL(double z, double Mmin, double MFeedback, double alpha_pl);
+
 double sigma_norm, R, theta_cmb, omhh, z_equality, y_d, sound_horizon, alpha_nu, f_nu, f_baryon, beta_c, d2fact, R_CUTOFF, DEL_CURR, SIG_CURR;
 
 
@@ -814,5 +893,453 @@ double splined_erfc(double x){
   else
     return exp(gsl_spline_eval(erfc_spline, x, erfc_acc));
 }
+
+float FgtrConditionalM_second(float z, float M1, float M2, float MFeedback, float alpha, float delta1, float delta2) {
+    
+    return exp(M1)*pow(exp(M1)/MFeedback,alpha)*dNdM_conditional_second(z,M1,M2,delta1,delta2)/sqrt(2.*PI);
+}
+
+float dNdM_conditional_second(float z, float M1, float M2, float delta1, float delta2){
+    
+    float sigma1, sigma2, dsigmadm, dicke_growth,dsigma_val;
+    
+    M1 = exp(M1);
+    M2 = exp(M2);
+    
+    dicke_growth = dicke(z);
+    
+    splint(Mass_Spline-1,Sigma_Spline-1,second_derivs_sigma-1,(int)NMass,M1,&(sigma1));
+    splint(Mass_Spline-1,Sigma_Spline-1,second_derivs_sigma-1,(int)NMass,M2,&(sigma2));
+    
+    sigma1 = sigma1*sigma1;
+    sigma2 = sigma2*sigma2;
+    
+    splint(Mass_Spline-1,dSigmadm_Spline-1,second_derivs_dsigma-1,(int)NMass,M1,&(dsigma_val));
+    
+    dsigmadm = -pow(10.,dsigma_val)/(2.0*sigma1); // This is actually sigma1^{2} as calculated above, however, it should just be sigma1. It cancels with the same factor below. Why I have decided to write it like that I don't know!
+    
+    if((sigma1 > sigma2)) {
+        
+        return -(( delta1 - delta2 )/dicke_growth)*( 2.*sigma1*dsigmadm )*( exp( - ( delta1 - delta2 )*( delta1 - delta2 )/( 2.*dicke_growth*dicke_growth*( sigma1 - sigma2 ) ) ) )/(pow( sigma1 - sigma2, 1.5));
+    }
+    else if(sigma1==sigma2) {
+        
+        return -(( delta1 - delta2 )/dicke_growth)*( 2.*sigma1*dsigmadm )*( exp( - ( delta1 - delta2 )*( delta1 - delta2 )/( 2.*dicke_growth*dicke_growth*( 1.e-6 ) ) ) )/(pow( 1.e-6, 1.5));
+        
+    }
+    else {
+        return 0.;
+    }
+}
+
+void gauleg(float x1, float x2, float x[], float w[], int n)
+//Given the lower and upper limits of integration x1 and x2, and given n, this routine returns arrays x[1..n] and w[1..n] of length n,
+//containing the abscissas and weights of the Gauss- Legendre n-point quadrature formula.
+{
+    
+    int m,j,i;
+    double z1,z,xm,xl,pp,p3,p2,p1;
+    
+    m=(n+1)/2;
+    xm=0.5*(x2+x1);
+    xl=0.5*(x2-x1);
+    for (i=1;i<=m;i++) {
+        //High precision is a good idea for this routine.
+        //The roots are symmetric in the interval, so we only have to find half of them.
+        //Loop over the desired roots.
+        
+        z=cos(3.141592654*(i-0.25)/(n+0.5));
+        
+        //Starting with the above approximation to the ith root, we enter the main loop of refinement by Newton’s method.
+        do {
+            p1=1.0;
+            p2=0.0;
+            for (j=1;j<=n;j++) {
+                //Loop up the recurrence relation to get the Legendre polynomial evaluated at z.
+                p3=p2;
+                p2=p1;
+                p1=((2.0*j-1.0)*z*p2-(j-1.0)*p3)/j;
+            }
+            //p1 is now the desired Legendre polynomial. We next compute pp, its derivative, by a standard relation involving also p2,
+            //the polynomial of one lower order.
+            pp=n*(z*p1-p2)/(z*z-1.0);
+            z1=z;
+            z=z1-p1/pp;
+        } while (fabs(z-z1) > EPS2);
+        x[i]=xm-xl*z;
+        x[n+1-i]=xm+xl*z;
+        w[i]=2.0*xl/((1.0-z*z)*pp*pp);
+        w[n+1-i]=w[i];
+    }
+}
+
+void nrerror(char error_text[])
+{
+    fprintf(stderr,"Numerical Recipes run-time error...\n");
+    fprintf(stderr,"%s\n",error_text);
+    fprintf(stderr,"...now exiting to system...\n");
+    exit(1);
+}
+
+float *vector(long nl, long nh)
+/* allocate a float vector with subscript range v[nl..nh] */
+{
+    float *v;
+    v = (float *)malloc((size_t) ((nh-nl+1+NR_END)*sizeof(float)));
+    if(!v) nrerror("allocation failure in vector()");
+    return v - nl + NR_END;
+}
+
+void free_vector(float *v, long nl, long nh)
+/* free a float vector allocated with vector() */
+{
+    free((FREE_ARG) (v+nl-NR_END));
+}
+
+void spline(float x[], float y[], int n, float yp1, float ypn, float y2[])
+/*Given arrays x[1..n] and y[1..n] containing a tabulated function, i.e., yi = f(xi), with
+ x1 <x2 < :: : < xN, and given values yp1 and ypn for the first derivative of the interpolating
+ function at points 1 and n, respectively, this routine returns an array y2[1..n] that contains
+ the second derivatives of the interpolating function at the tabulated points xi. If yp1 and/or
+ ypn are equal to 1e30 or larger, the routine is signaled to set the corresponding boundary
+ condition for a natural spline, with zero second derivative on that boundary.*/
+{
+    int i,k;
+    float p,qn,sig,un,*u;
+    int na,nb,check;
+    u=vector(1,n-1);
+    if (yp1 > 0.99e30)                     // The lower boundary condition is set either to be "natural"
+        y2[1]=u[1]=0.0;
+    else {                                 // or else to have a specified first derivative.
+        y2[1] = -0.5;
+        u[1]=(3.0/(x[2]-x[1]))*((y[2]-y[1])/(x[2]-x[1])-yp1);
+    }
+    for (i=2;i<=n-1;i++) {                              //This is the decomposition loop of the tridiagonal algorithm.
+        sig=(x[i]-x[i-1])/(x[i+1]-x[i-1]);                //y2 and u are used for temporary
+        na = 1;
+        nb = 1;
+        check = 0;
+        while(((float)(x[i+na*1]-x[i-nb*1])==(float)0.0)) {
+            check = check + 1;
+            if(check%2==0) {
+                na = na + 1;
+            }
+            else {
+                nb = nb + 1;
+            }
+            sig=(x[i]-x[i-1])/(x[i+na*1]-x[i-nb*1]);
+        }
+        p=sig*y2[i-1]+2.0;                                //storage of the decomposed
+        y2[i]=(sig-1.0)/p;                                //  factors.
+        u[i]=(y[i+1]-y[i])/(x[i+1]-x[i]) - (y[i]-y[i-1])/(x[i]-x[i-1]);
+        u[i]=(6.0*u[i]/(x[i+1]-x[i-1])-sig*u[i-1])/p;
+        
+        if(((float)(x[i+1]-x[i])==(float)0.0) || ((float)(x[i]-x[i-1])==(float)0.0)) {
+            na = 0;
+            nb = 0;
+            check = 0;
+            while((float)(x[i+na*1]-x[i-nb])==(float)(0.0) || ((float)(x[i+na]-x[i-nb*1])==(float)0.0)) {
+                check = check + 1;
+                if(check%2==0) {
+                    na = na + 1;
+                }
+                else {
+                    nb = nb + 1;
+                }
+            }
+            u[i]=(y[i+1]-y[i])/(x[i+na*1]-x[i-nb]) - (y[i]-y[i-1])/(x[i+na]-x[i-nb*1]);
+            
+            u[i]=(6.0*u[i]/(x[i+na*1]-x[i-nb*1])-sig*u[i-1])/p;
+            
+        }
+    }
+    if (ypn > 0.99e30)                        //The upper boundary condition is set either to be "natural"
+        qn=un=0.0;
+    else {                                    //or else to have a specified first derivative.
+        qn=0.5;
+        un=(3.0/(x[n]-x[n-1]))*(ypn-(y[n]-y[n-1])/(x[n]-x[n-1]));
+    }
+    y2[n]=(un-qn*u[n-1])/(qn*y2[n-1]+1.0);
+    
+    for (k=n-1;k>=1;k--) {                      //This is the backsubstitution loop of the tridiagonal
+        y2[k]=y2[k]*y2[k+1]+u[k];               //algorithm.
+    }
+    free_vector(u,1,n-1);
+}
+
+
+void splint(float xa[], float ya[], float y2a[], int n, float x, float *y)
+/*Given the arrays xa[1..n] and ya[1..n], which tabulate a function (with the xai's in order),
+ and given the array y2a[1..n], which is the output from spline above, and given a value of
+ x, this routine returns a cubic-spline interpolated value y.*/
+{
+    void nrerror(char error_text[]);
+    int klo,khi,k;
+    float h,b,a;
+    klo=1;                                                  // We will find the right place in the table by means of
+    khi=n;                                                  //bisection. This is optimal if sequential calls to this
+    while (khi-klo > 1) {                                   //routine are at random values of x. If sequential calls
+        k=(khi+klo) >> 1;                                     //are in order, and closely spaced, one would do better
+        if (xa[k] > x) khi=k;                                 //to store previous values of klo and khi and test if
+        else klo=k;                                           //they remain appropriate on the next call.
+    }                                                           // klo and khi now bracket the input value of x.
+    h=xa[khi]-xa[klo];
+    if (h == 0.0) nrerror("Bad xa input to routine splint");    //The xa's must be distinct.
+    a=(xa[khi]-x)/h;
+    b=(x-xa[klo])/h;                                            //Cubic spline polynomial is now evaluated.
+    *y=a*ya[klo]+b*ya[khi]+((a*a*a-a)*y2a[klo]+(b*b*b-b)*y2a[khi])*(h*h)/6.0;
+}
+
+unsigned long *lvector(long nl, long nh)
+/* allocate an unsigned long vector with subscript range v[nl..nh] */
+{
+    unsigned long *v;
+    v = (unsigned long *)malloc((size_t) ((nh-nl+1+NR_END)*sizeof(long)));
+    if(!v) nrerror("allocation failure in lvector()");
+    return v - nl + NR_END;
+}
+
+void free_lvector(unsigned long *v, long nl, long nh)
+/* free an unsigned long vector allocated with lvector() */
+{
+    free((FREE_ARG) (v+nl-NR_END));
+}
+
+double FgtrlnM_general(double lnM, void *params) {
+    
+    struct parameters_gsl_int_ vals = *(struct parameters_gsl_int_ *)params;
+    
+    float z = vals.z_obs;
+    float M2 = vals.Mval;
+    float MFeedback = vals.M_Feed;
+    float alpha = vals.alpha_pl;
+    float delta1 = vals.del_traj_1;
+    float delta2 = vals.del_traj_2;
+    
+    return FgtrConditionalM_second(z,lnM,M2,MFeedback,alpha,delta1,delta2);
+}
+double FgtrM_general(float z, float M1, float M_Max, float M2, float MFeedback, float alpha, float delta1, float delta2) {
+    
+    double result, error, lower_limit, upper_limit;
+    
+    double rel_tol = 0.01;
+    
+    int size;
+    size = 1000;
+    
+    //    printf("delta1 = %e Deltac = %e\n",delta1,Deltac);
+    
+    if((float)delta1==(float)Deltac) {
+        
+        gsl_function Fx;
+        
+        gsl_integration_workspace * w = gsl_integration_workspace_alloc (size);
+        
+        Fx.function = &FgtrlnM_general;
+        
+        struct parameters_gsl_int_  parameters_gsl_int = {
+            .z_obs = z,
+            .Mval = M2,
+            .M_Feed = MFeedback,
+            .alpha_pl = alpha,
+            .del_traj_1 = delta1,
+            .del_traj_2 = delta2
+        };
+        
+        Fx.params = &parameters_gsl_int;
+        
+        lower_limit = M1;
+        upper_limit = M_Max;
+        
+        gsl_integration_qag (&Fx, lower_limit, upper_limit, 0, rel_tol, size, GSL_INTEG_GAUSS15, w, &result, &error);
+        //        gsl_integration_qag (&Fx, lower_limit, upper_limit, 0, rel_tol, size, GSL_INTEG_GAUSS61, w, &result, &error);
+        gsl_integration_workspace_free (w);
+        
+        if(delta2 > delta1) {
+            return 1.;
+        }
+        else {
+            return result;
+        }
+    }
+}
+
+float FgtrConditionallnM(float M1, struct parameters_gsl_int_ parameters_gsl_int) {
+    
+    float z = parameters_gsl_int.z_obs;
+    float M2 = parameters_gsl_int.Mval;
+    float MFeedback = parameters_gsl_int.M_Feed;
+    float alpha = parameters_gsl_int.alpha_pl;
+    float delta1 = parameters_gsl_int.del_traj_1;
+    float delta2 = parameters_gsl_int.del_traj_2;
+    
+    return exp(M1)*pow(exp(M1)/MFeedback,alpha)*dNdM_conditional_second(z,M1,M2,delta1,delta2)/sqrt(2.*PI);
+}
+
+float GaussLegengreQuad_Fcoll(int n, float z, float M2, float MFeedback, float alpha, float delta1, float delta2)
+{
+    //Performs the Gauss-Legendre quadrature.
+    int i;
+    
+    float integrand,x;
+    integrand = 0.0;
+    
+    struct parameters_gsl_int_  parameters_gsl_int = {
+        .z_obs = z,
+        .Mval = M2,
+        .M_Feed = MFeedback,
+        .alpha_pl = alpha,
+        .del_traj_1 = delta1,
+        .del_traj_2 = delta2
+    };
+    
+    if(delta2>delta1) {
+        return 1.;
+    }
+    else {
+        for(i=1;i<(n+1);i++) {
+            x = xi_low[i];
+            integrand += wi_low[i]*FgtrConditionallnM(x,parameters_gsl_int);
+        }
+        return integrand;
+    }
+}
+
+/*
+ FUNCTION FgtrM_st(z, M)
+ Computes the fraction of mass contained in haloes with mass > M at redshift z
+ Uses Sheth-Torman correction
+ */
+double dFdlnM_st_PL (double lnM, void *params){
+    
+    struct parameters_gsl_ST_int_ vals = *(struct parameters_gsl_ST_int_ *)params;
+    
+    double M = exp(lnM);
+    float z = vals.z_obs;
+    float MFeedback = vals.M_Feed;
+    float alpha = vals.alpha_pl;
+    
+    return dNdM_st(z, M) * M * M * pow((M/MFeedback),alpha);
+}
+double FgtrM_st_PL(double z, double Mmin, double MFeedback, double alpha_pl){
+    
+    double result_lower, result_upper, error, lower_limit, upper_limit;
+    gsl_function F;
+    double rel_tol  = 0.001; //<- relative tolerance
+    gsl_integration_workspace * w_lower
+    = gsl_integration_workspace_alloc (1000);
+    gsl_integration_workspace * w_upper
+    = gsl_integration_workspace_alloc (1000);
+    
+    struct parameters_gsl_ST_int_  parameters_gsl_ST_lower = {
+        .z_obs = z,
+        .M_Feed = MFeedback,
+        .alpha_pl = alpha_pl,
+    };
+    
+    F.function = &dFdlnM_st_PL;
+    F.params = &parameters_gsl_ST_lower;
+    lower_limit = log(Mmin);
+    upper_limit = log(1e16);
+    
+    gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
+                         1000, GSL_INTEG_GAUSS61, w_lower, &result_lower, &error);
+    gsl_integration_workspace_free (w_lower);
+    
+    return (result_lower) / (OMm*RHOcrit);
+}
+
+void initialiseSplinedSigmaM(float M_Min, float M_Max)
+{
+    int i;
+    float Mass;
+    
+    Mass_Spline = calloc(NMass,sizeof(float));
+    Sigma_Spline = calloc(NMass,sizeof(float));
+    dSigmadm_Spline = calloc(NMass,sizeof(float));
+    second_derivs_sigma = calloc(NMass,sizeof(float));
+    second_derivs_dsigma = calloc(NMass,sizeof(float));
+    
+    for(i=0;i<NMass;i++) {
+        Mass_Spline[i] = pow(10., log10(M_Min) + (float)i/(NMass-1)*( log10(M_Max) - log10(M_Min) ) );
+        Sigma_Spline[i] = sigma_z0(Mass_Spline[i]);
+        dSigmadm_Spline[i] = log10(-dsigmasqdm_z0(Mass_Spline[i]));
+    }
+    spline(Mass_Spline-1,Sigma_Spline-1,NMass,0,0,second_derivs_sigma-1);
+    spline(Mass_Spline-1,dSigmadm_Spline-1,NMass,0,0,second_derivs_dsigma-1);
+}
+
+void initialiseGL_Fcoll(int n_low, int n_high, float M_Min, float M_Max)
+{
+    //calculates the weightings and the positions for Gauss-Legendre quadrature.
+    
+    gauleg(log(M_Min),log(M_Max),xi_low,wi_low,n_low);
+    
+    gauleg(log(M_Min),log(M_Max),xi_high,wi_high,n_high);
+    
+}
+
+void initialiseFcoll_spline(float z, float Mmin, float Mmax, float Mval, float MFeedback, float alphapl)
+{
+    double overdense_val,overdense_small_low,overdense_small_high,overdense_large_low,overdense_large_high;
+    int i;
+    
+    overdense_large_high = Deltac;
+    overdense_large_low = 1.5;
+    overdense_small_high = 1.5;
+    overdense_small_low = -1. + 9.e-8;
+    
+    Fcoll_spline_acc   = gsl_interp_accel_alloc ();
+    Fcoll_spline  = gsl_spline_alloc (gsl_interp_cspline, SPLINE_NPTS);
+    
+    for (i=0;i<SPLINE_NPTS;i++){
+        overdense_val = log10(1.+overdense_small_low) + (float)i/(SPLINE_NPTS-1.)*(log10(1.+overdense_small_high) - log10(1.+overdense_small_low));
+        
+        log_Fcoll_spline_table[i] = log10(GaussLegengreQuad_Fcoll(NGLlow,z,log(Mval),MFeedback,alphapl,Deltac,pow(10.,overdense_val)-1.));
+        Fcoll_spline_params[i] = overdense_val;
+        
+        if(log_Fcoll_spline_table[i]<-40.) {
+            log_Fcoll_spline_table[i] = -40.;
+        }
+    }
+    gsl_spline_init(Fcoll_spline, Fcoll_spline_params, log_Fcoll_spline_table, SPLINE_NPTS);
+    
+    for(i=0;i<Nhigh;i++) {
+        Overdense_spline_GL_high[i] = overdense_large_low + (float)i/((float)Nhigh-1.)*(overdense_large_high - overdense_large_low);
+        Fcoll_spline_GL_high[i] = FgtrM_general(z,log(Mmin),log(Mmax),log(Mval),MFeedback,alphapl,Deltac,Overdense_spline_GL_high[i]);
+        
+        if(Fcoll_spline_GL_high[i]<0.) {
+            Fcoll_spline_GL_high[i]=pow(10.,-40.0);
+        }
+    }
+    spline(Overdense_spline_GL_high-1,Fcoll_spline_GL_high-1,Nhigh,0,0,second_derivs_high_GL-1);
+}
+
+void FcollSpline(float Overdensity, float *splined_value)
+{
+    int i;
+    float returned_value;
+    
+    if(Overdensity<1.5) {
+        if(Overdensity<-1.) {
+            returned_value = 0;
+        }
+        else {
+            returned_value = gsl_spline_eval(Fcoll_spline, log10(Overdensity+1.), Fcoll_spline_acc);
+            returned_value = pow(10.,returned_value);
+        }
+    }
+    else {
+        if(Overdensity<Deltac) {
+            splint(Overdense_spline_GL_high-1,Fcoll_spline_GL_high-1,second_derivs_high_GL-1,(int)Nhigh,Overdensity,&(returned_value));
+        }
+        else {
+            returned_value = 1.;
+        }
+    }
+    *splined_value = returned_value;
+}
+
+
 
 #endif
