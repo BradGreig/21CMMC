@@ -1,0 +1,221 @@
+
+This text file contains a brief description of each file and its purpose.
+
+If further details are required, please refer to the comments within each corresponding file.
+
+Files containing brief descriptions are:
+
+1)   21CMMC.py
+2)   drive_21cmMC_streamlined.c
+3)   CosmoHammer_21CMMC/likelihood/module/Likelihood21cmFast.py
+4)   init.c
+5)   perturb_field.c
+6)   create_dens_boxes_for_LC.c
+7)   Create_ionisaton_fcoll_tables.py and Createfcoll_ionisation_LC.c
+8)   CreateFcollTable.c
+9)   SplitMockObservation.c
+10)  Variables.h (located in Parameter Files)
+11)  ReadAllData.py
+
+
+________________________________________________________________________________________________________
+
+1) 21CMMC.py
+________________________________________________________________________________________________________
+
+
+This is the main python script used for performing the MCMC. Within this file, all flag options and 
+parameter combinations can be set. This file contains numerous comments and descriptions for the flag
+options and other things. Refer to “QuickStart.txt” for examples of flag combinations to produce specific
+outputs or “SettingUp21CMMC.txt” for more detailed descriptions for using 21CMMC.
+
+________________________________________________________________________________________________________
+
+2) drive_21cmMC_streamlined.c
+________________________________________________________________________________________________________
+
+
+This is the main C driver of 21cmFAST, and can be run independently from the MCMC as a stand alone (fast)
+version of 21cmFAST.
+
+This file produces all outputs, given the user defined options and inputs. This is a re-written version 
+of 21cmFAST, as such there have been considerable changes. The major changes are numerous variables 
+have been removed from the header files, and are now obtained from two main text files, Walker_* and 
+WalkerCosmology_*. These two text files, must maintain the same order of parameters, and 
+drive_21cmMC_streamlined will not run without these text files. I provide a basic example of these text 
+files, which correspond to the faint galaxies model. File naming convention requires two numbers for unique 
+identification by the MCMC sampler. Note that the MCMC sampler itself will create these requisite files 
+on the fly.
+
+Within Variables.h, additional flag options are available which are more useful for debugging etc. They are 
+maintained in Variables.h as they are not required for the MCMC, but are useful in the debugging and 
+modifying of 21cmFAST.
+
+Below is an example command line call of the main C driver (more detailed explanations can be found in 
+drive_21cmMC_streamlined.c)
+
+
+./drive_21cmMC_streamlined 1.000000 1.000000 1 1 0 6.0
+
+
+i)   This call will look for the unique astrophysical and cosmological file names given by 1.000000 1.000000
+ii)  Third call is for the number of user-defined redshifts (must match the number of redshifts in the walker 
+     file). Only used in co-eval mode
+iii) Fourth argument is whether or not to generate the light-cone. Selecting this option, overrules the 
+     third argument.
+iv)  Fifth argument is used for a non-zero mass dependent scaling of the ionising efficiency (support for 
+     this doesn’t exist). Choosing a non-zero value will result in errors or spurious result. Support for this 
+     will be added in the future.
+v)   Sixth argument is the redshift in which the IGM spin temperature (Ts.c) will be evolved down to.
+
+Explanations for other flag options etc., can be found in drive_21cmMC_streamlined.c and 21CMMC.py
+
+
+________________________________________________________________________________________________________
+
+3)   CosmoHammer_21CMMC/likelihood/module/Likelihood21cmFast.py
+________________________________________________________________________________________________________
+
+
+This is the Python script within which the likelihood computation is performed.
+
+Basically, this reads in all the output data from 21cmFAST and performs all necessary computations. All
+flag options set in 21CMMC.py are implemented here.
+
+This file creates the Walker* files for each of the individual instances of 21cmFAST.
+
+Please refer to this file for further details.
+
+________________________________________________________________________________________________________
+
+4) init.c
+________________________________________________________________________________________________________
+
+
+Essentially the original init.c from 21cmFAST, but now extra arguments are required to read from the cosmology 
+text file. An example call would be:
+
+
+./init 1.000000 1.000000
+
+________________________________________________________________________________________________________
+
+5) perturb_field.c
+________________________________________________________________________________________________________
+
+
+Again, the same as the original form in 21cmFAST, with the extra arguments for the cosmology. For example, 
+for a z = 6.0 density field:
+
+
+./perturb_field 6.0 1.000000 1.000000 
+
+________________________________________________________________________________________________________
+
+6) create_dens_boxes_for_LC.c
+________________________________________________________________________________________________________
+
+
+Creates all the requisite density and velocity field for the computation when the IGM spin temperature is 
+included (i.e. Ts.c). 
+
+
+./create_dens_boxes_for_LC 1.000000 1.000000 6.0
+
+
+This will create the redshift boxes for the provided cosmology to perform the Ts.c computation 
+(and subsequently light-cone). Only needs to be performed once for a given set of cosmology parameters or
+initial conditions.
+
+*** NOTE ***
+The file naming convention of these boxes does not include the unique identifiers. Therefore, one needs to be 
+careful if different cosmologies are to be considered. The reason for this is that if the cosmology is to be 
+varied, it can be done on the fly in drive_21cmMC_streamlined without ever needing to write any boxes to file.
+
+________________________________________________________________________________________________________
+
+7) Create_ionisaton_fcoll_tables.py and Createfcoll_ionisation_LC.c
+________________________________________________________________________________________________________
+
+
+The python script Create_ionisaton_fcoll_tables.py calls the C file Createfcoll_ionisation_LC.c. This is used 
+to create the interpolation table for the collapsed fraction as a function of R_MFP and TVIR given the redshift 
+sampling of Ts.c. It is only valid for a single cosmology. This is the interpolation table used for speeding 
+up the find_HII_bubbles section of 21cmFAST.
+
+See either file for more details.
+
+________________________________________________________________________________________________________
+
+8) CreateFcollTable.c
+________________________________________________________________________________________________________
+
+
+This creates the interpolation table for the collapse fraction to be used within the computation of Ts.c. 
+This creates and is a different table to the one above.
+
+Check this file for the requisite command line arguments.
+
+________________________________________________________________________________________________________
+
+9) SplitMockObservation.c
+________________________________________________________________________________________________________
+
+
+This file is used for creating mock observations for the light-cone version of the code only.
+
+NOTE: Please read this and the relevant section in “CreatingMockObservations.txt” for how to use this 
+script and some caveats.
+
+When using the light-cone option, the physical size of the box is limited by HII_DIM. Therefore, the span in z 
+differs across HII_DIM differs depending on the choice of HII_DIM (and cosmology). Therefore, if the mock 
+observation (which is typically a larger box, both in Mpc and HII_DIM), then the span in z of the light-cone 
+boxes differs.
+
+What SplitMockObservation does is to read in the larger cubic box of the brightness temperature field and split 
+it into the requisite smaller boxes for the box size and resolution to be sampled in the MCMC. At the same time 
+it will create the 21cm PS, to be used as the box observation. To output the 21cm brightness temperature fields
+from the light-cone the flag PRINT_LIGHTCONE_21cmBoxes in Variables.h needs to be set to 1. (Remember to turn 
+this flag off prior to commencing a full MCMC run!).
+
+This splitting only happens along the line-of-sight, therefore the transverse dimensions will remain at the 
+same physical size and resolution.
+
+For example, consider a 600 Mpc and 400^3 box for the mock observation.
+
+If the size and resolution of the box to be sampled in the MCMC is 300 Mpc and 200^3, then:
+
+i)   The 600 Mpc box will be split into two boxes along the line-of-sight (z) direction, retaining the same 
+     600 Mpc size in the transverse dimensions.
+
+ii)  For each of these boxes, the 21cm PS will be computed by spherically averaging, resulting in two 21cm PS, 
+     corresponding to the smaller size of the sampled box.
+
+iii) Note, the file naming convention is fixed, and thus for each call of SplitMockObservation.c the output 
+     text files need to be changed by hand.
+
+________________________________________________________________________________________________________
+
+10) Variables.h (located in Parameter Files)
+________________________________________________________________________________________________________
+
+
+Variables.h contain all the variable names required to perform 21cmFAST in the new format (i.e. uniquely 
+declaring global variables to be easily accessed and called from memory at any point within 21cmFAST.
+
+Additionally, it contains some global flags (toggles by a 0 or 1) which are useful for debugging. Writing 
+additional things to file or outputting averaged quantities.
+
+________________________________________________________________________________________________________
+
+11) ReadAllData.py
+________________________________________________________________________________________________________
+
+
+Provided the ‘KEEP_ALL_DATA’ flag was set to true in 21CMMC, this script can read in all the MCMC data 
+(default being (i) PS vs k for all z (ii) tau (electron scattering optical depth (iii) xH vs z and 
+(iv) Average Tb vs z.
+
+Following some manual input (as described in ReadAllData.py), this script will read in all the stored 
+data from file and store it in memory, separating out the accepted walker positions from the rejected
+walker positions).

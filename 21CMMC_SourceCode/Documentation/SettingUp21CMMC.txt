@@ -1,0 +1,285 @@
+
+This document contains a brief summary of the steps required to setup and use 21CMMC.
+Additionally, this includes some tips/checks to perform to ensure things are working
+as expected.
+
+1) “Installing” 21CMMC, dependencies and preparing 21cmFAST
+2) Creating density files
+3) What box size/resolution to use
+4) Creating interpolation tables
+5) Helpful tests to prepare/understand 21CMMC
+6) Final check before commencing a large 21CMMC run
+
+
+_______________________________________________________________________________
+
+
+
+1) “Installing” 21CMMC, dependencies and preparing 21cmFAST
+
+
+______________________________________________________________________________
+
+i) “Installing” 21CMMC
+______________________________________________________________________________
+
+
+21CMMC is not installed as such, rather it should work straight from the version 
+provided. This is because I have heavily modified the base code of CosmoHammer so 
+far have not changed (or tested) ‘building’ my version of CosmoHammer. Therefore 
+clashes might occur if you already use CosmoHammer. Also, I use an older version of 
+CosmoHammer (the updated version can be found here 
+https://github.com/cosmo-ethz/CosmoHammer). Therefore 21CMMC should run directly 
+from the C and Python scripts included, without the need of any setup.py builds.
+
+______________________________________________________________________________
+
+ii) Dependencies
+______________________________________________________________________________
+
+
+To those unfamiliar to 21cmFAST, FFTW3 libraries will need to be installed, 
+including float support (—-enable-float). In addition, openmp (—-enable-openmp) 
+will also be required as will the standard gsl libraries.
+
+
+The python code should only need scipy and numpy. Note there has been an issue using 
+numpy v1.12 or greater. Please inform me if this is still the case. The fix at 
+present seems to be to use v1.11 or earlier.
+
+______________________________________________________________________________
+
+iii) Preparing 21cmFAST
+______________________________________________________________________________
+
+
+To run 21CMMC, you need to compile the C code. The folder includes a makefile for 
+all the C code (please modify the makefile to suit your own computing architecture). 
+Most of the code is standard 21cmFAST C code, instead compressed into a single 
+“drive_21cmMC_streamlined.c” file, which is what 21CMMC calls.
+
+
+21cmFAST uses header files to define variables etc., located within “COSMOLOGY.H”, 
+“INIT_PARAMS.H”, “ANAL_PARAMS.H” and “HEAT_PARAMS.H”. Only some of these now remain,
+a large number now are read in from text files (e.g. Walker_* and WalkerCosmology_*).
+Additionally, some new ones have been added to “Variables.h”. For the most part,
+“Variables.h” just defines the global quantities.
+
+Remember to “make” the C code following any changes to the .c files or any of the 
+header files.
+
+(Note, remember than for each change of L and DIM/HII_DIM in INIT_PARAMS.H the C code
+must be re-compiled. Make sure the values of L and DIM/HII_DIM are set and 
+compiled for the MCMC sampled values prior to starting the MCMC!)
+
+______________________________________________________________________________
+
+iv) 21CMMC (i.e. drive_21cmMC_streamlined.c) mimicking 21cmFAST
+______________________________________________________________________________
+
+
+Provided the optional flags are appropriately set between the 21CMMC instance and
+a separate copy of 21cmFAST (the latest version), the two pieces of simulation code
+should return more or less the same result.
+
+The main difference occurs at lines 1092 - 1095. This arises from the change in 
+parameterisation from L_X (21CMMC) and f_X (21cmFAST). The original code remains
+(commented out) to highlight the difference. One can switching back to the old 
+code (f_X) and return f_X in the “HEAT_PARAMS.H” header file.
+
+The only other necessary change to make should be NU_X_MAX. This variable does not
+exist in 21cmFAST, instead in 21cmFAST it is hard coded in “heating_helper_progs.c” 
+in the function “integrate_over_nu” to be 100*lower_int_limit where lower_int_limit
+is computed in the main computation. Therefore, if one wants to replicate 21cmFAST,
+change the 21CMMC “heating_helper_progs.c” version of “integrate_over_nu” to take 
+100*lower_int_limit rather than NU_X_MAX.
+
+Following these two changes, this should result in the same outputs (give or take 
+some very minor variations in the numbers which arise from the use of floats). 
+
+
+_______________________________________________________________________________
+
+
+
+2) Creating density files
+
+______________________________________________________________________________
+
+(i) If the cosmology is to be fixed and only one set of initial conditions are to be 
+used (this is the fastest variant of 21CMMC) then the density (and velocity) 
+fields only have to be generated once.
+______________________________________________________________________________
+
+
+The first step is to create the initial conditions:
+
+./init 1.000000 1.000000
+
+which uses the provided Walker* files (containing the parameters). Box length and
+resolution are set in “INIT_PARAMS.H”
+
+Following this, the user can then perform either:
+
+./perturb_field 6.0 1.000000 1.000000
+
+or 
+
+./create_dens_boxes_for_LC 1.000000 1.000000 6.0
+
+In the former, this creates a single z = 6 density cube. This is useful for co-eval
+boxes when T_S >> T_CMB is being used and any redshift can be sampled.
+
+For the latter, this must be called if spin temperature fluctuations are to be
+computed. This will create the density and velocity cubes for all redshifts 
+required for the computation of the spin temperature fields. In the example above, this
+assumes the reionisation history will run down from z = 35 to z = 6 (this is what I do).
+
+
+______________________________________________________________________________
+
+(ii) If the cosmology or initial conditions are to be varied
+______________________________________________________________________________
+
+
+This is performed with GenerateNewICs = True
+
+With this, the density and velocity fields are never kept (i.e never written to file).
+
+
+_______________________________________________________________________________
+
+
+
+3) What box size/resolution to use
+
+
+This is a non-trivial question!
+
+Typically the boxes I adopt are 300 Mpc, 200^3, resulting in a cell-width of 1.5 Mpc.
+Note, my larger (mock observation) maintains the same resolution (1.5 Mpc), 600 Mpc, 
+400^3.
+
+If these are to be modified, perform a convergence test to confirm that the 
+size/resolution is producing the 21cm PS from the smaller boxes as the bigger boxes. 
+
+The cell-width shouldn’t need to be lower than about ~ 1 Mpc, (limit of the numerical 
+approach) but it should be possible to go larger (i.e. coarser). However, but 2-3 Mpc 
+should be about as coarse as you want to consider.
+
+The box size could in principle be dropped to about 200 Mpc. Double check this, but 
+this should be ok. Any lower, and the large-scales are not truly large enough to model 
+reionisation.
+
+
+_______________________________________________________________________________
+
+
+
+4) Creating interpolation tables
+
+
+The interpolation tables can only be used if the initial conditions are not being 
+varied! 
+
+Can improve the computational efficiency, at the expensive of some accuracy (1-2% at 
+most on the 21cm PS for most k-values and redshifts). 
+
+Note, prior to using interpolation tables in the MCMC, make sure they are able to  
+produce the same 21cm PS from the same astrophysical parameter set as those without 
+the interpolations tables across all k and redshifts for several models (i.e. different 
+astrophysical models). If not, consider increasing the sampling of the interpolation 
+tables.
+
+Note, only consider using interpolation tables if the computation is too slow. Loss of 
+accuracy could cause unknown issues.
+
+
+
+There are two types of interpolation tables available for use.
+
+i)  The first, created with “CreateFcollTable.c” (see file for further details) and 
+    used by setting “UseFcollTable = True” creates an interpolation table of the collapse 
+    fraction as a function of smoothing radius (filtering radius for the Ts.c computation) 
+    and redshift.
+
+    This table is used for the computation of the IGM spin temperature. It can only be 
+    used when Include_Ts_fluc = True is set (otherwise it is not needed).
+
+    This table can provide a 20-30 per cent improvement in computational efficiency. 
+
+
+ii) The second, created with Create_ionisaton_fcoll_tables.py (see file for further 
+    details) produces an interpolation of the collapse fraction as a function of 
+    smoothing radius and redshift. Note however, this is for a different smoothing 
+    radius (the smoothing of the density field for the ionisation algorithm) and 
+    redshift sampling.
+
+    It is only really useful for when the light-cone option is set 
+    (IncludeLightCone = True) and can have a notable increase in computational efficiency. 
+
+    Note, this one can have some issues at high-z. Sometimes I found the 21cm PS at z ~> 20 
+    generated from the interpolation table to be 10-20% different. Might be an issue with the 
+    sampling of the table. Please double check that the 21cm PS with/without the table are 
+    close enough. (1-2 per cent)
+
+
+_______________________________________________________________________________
+
+
+
+5) Helpful tests to prepare/understand 21CMMC
+
+
+When possible it is ALWAYS recommended to check the mock observations are correct prior 
+to running 21CMMC. 
+
+To do this, always plot the 21cm signal (i.e PS) of the mock observation against the 
+equivalent 21cm signal statistic to be sampled in the MCMC. For example, for the FAINT 
+galaxies model, I generated the large-box simulation (600 Mpc, 400^3) and generated 
+the 21cm PS. I then generated the 21cm PS from a smaller box (300 Mpc, 200^3) and 
+compared that both are essentially the same (there can be some very minor differences 
+in the amplitude, ~1 per cent at most). Note, this will not be true over all scales as 
+the two boxes should have different initial conditions (i.e. cosmic variance on the 
+largest scales, smallest k). But it is important that they are the same over the scales 
+at which the MCMC will fit the signal (i.e. for the 21cm PS, I typically fit between 
+k = 0.1 - 1 Mpc^{-1} for a 300 Mpc box).
+
+Additionally, the same check should be performed for all redshifts when interpolation 
+tables are used. Checking that the 21cm signal statistic isn’t affected by adopting 
+the interpolation table approximation.
+
+Finally, if an issue occurs with 21CMMC. That is, if the input astrophysical parameters
+are not recovered by 21CMMC, plot the 21cm signal of the mock observation, against the 
+MCMC sampled box (i.e. smaller one) for the expected astrophysical parameter set. 
+Additionally, also generate the 21cm signal from the maximum likelihood astrophysical 
+parameter set, to try and determine if there are any differences and why.
+
+
+_______________________________________________________________________________
+
+
+
+6) Final check before commencing a large 21CMMC run
+
+
+Prior to embarking on a full run of 21CMMC, it is important to check everything is in 
+place and working correctly on a small scale run.
+
+That is to perform 21CMMC with a “walkersRatio” of 2 (lowest possible number), 
+“burninIterations=1”, “sampleIterations=1” and “threadCount=1”. The reason for this 
+check is to ensure all the mock observation files can be found, all the data is stored 
+and deleted and everything functions nominally. Without doing such a check, you may 
+inadvertently create a huge number of files, or accidentally store 21cm brightness 
+temperature cubes that will fill the hard drive space, rendering the computer unusable! 
+(Yes, I have done this more than once!).
+
+Once this check works, set “threadCount” to the number of threads you intend to use, 
+and change “walkersRatio” to the appropriate number to ensure that this many threads 
+are created (see 21CMMC.py). This check tests (i) that multithreading is working (ii)
+that there is enough memory on the machine to be able to have a large number of 
+instances of 21CMMC running simultaneously. Additionally, if you time this, this can 
+give you a very crude estimate of how fast the full run of 21CMMC might take for your
+setup (should provide an upper limit).
+
+
