@@ -9,40 +9,52 @@ NOTE:  We encourage the user to perform their own convergance tests if modifying
 /*
   Flag specifying whether one wants to calculate the spin temperature or just assume (Ts>>Tk)
 */
-#define USE_TS_IN_21CM (int) 0
+#define USE_TS_IN_21CM (int) (1)
 
 
 /*
   Efficiency parameter corresponding to the number of x-ray photons per
   solar mass in stars.
+ 
+  ** Now obsolete! Re-defined the X-Ray emissivity in terms of the luminosity integrated over the frequency range (L_X) from NU_X_THRESH to NU_X_MAX. Default value
+ for NU_X_MAX is 2keV. Furthermore, L_X is allowed to be a free parameter in 21CMMC, so definition has been moved to Variables.h **
 */
-#define ZETA_X (double) 1.0e56 // 10^57 ~ 1.7 X-ray photons per stelar baryon
+//#define ZETA_X (double) (2.0e56) // 2e56 ~ 0.3 X-ray photons per stellar baryon
 
 
 /*
   The fraction of baryons converted to stars
 */
-#define F_STAR (double) 0.1
+//#define F_STAR (double) (0.05)
 
 
 /*
   Smallest frequency X-ray photon contributing to IGM heating and ionization
   There might be wierd behaviour if you set this to less than the HeII ionization
   threshold, <~54.4 eV
-*/
-#define NU_X_THRESH (double) (300*NU_over_EV)
+ 
+  ** Now obsolete, allowed to be a free parameter in 21CMMC, so definition has been moved to Variables.h **
+ */
 
+//#define NU_X_THRESH (double) (300*NU_over_EV)
+//#define NU_X_MAX (double) (30000*NU_over_EV)
 
 /*
   X-Ray spectral index at frequencies higher than NU_X_THRESH
+ 
+  ** Now obsolete, allowed to be a free parameter in 21CMMC, so definition has been moved to Variables.h **
+ 
  */
-#define X_RAY_SPEC_INDEX (double) 1.2
+//#define X_RAY_SPEC_INDEX (double) (1.2)
 
 
 /*
   Minimum virial temperature (in K) of halos hosting X-ray sources responsible for heating the IGM
+
+ ** Now obsolete, allowed to be a free parameter in 21CMMC, so definition has been moved to Variables.h **
+ 
 */
-#define X_RAY_Tvir_MIN (double) 1e4
+//#define X_RAY_Tvir_MIN (double) (ION_Tvir_MIN)
 
 
 /*
@@ -54,7 +66,7 @@ Filter choice used for smoothing the linear density field to obtain the collapse
 #define HEAT_FILTER (int) 0
 
 
-#define CLUMPING_FACTOR (double) 1 /* sub grid scale.  note that if you want to run-down from a very high redshift (>50), you should set this to one.. */
+#define CLUMPING_FACTOR (double) 2 /* sub grid scale.  note that if you want to run-down from a very high redshift (>50), you should set this to one.. */
 
 
 /*

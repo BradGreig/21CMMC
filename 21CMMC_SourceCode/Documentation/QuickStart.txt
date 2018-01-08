@@ -1,0 +1,382 @@
+
+This document contains a series of examples highlighting which flags to set to perform
+various analyses. Also why such examples might be useful, and the impact that some 
+flag switches can have.
+
+These examples assume that the mock observations have been created correctly. Please 
+refer to SettingUp21CMMC.txt for details on creating the mock observations.
+
+______________________________________________________________________________________
+
+1) 3 astrophysical parameter model, co-eval cubes with 21cm power spectrum (PS) 
+   (saturated spin temperature limit; T_S >> T_CMB)
+
+2) 4 astrophysical parameter model, co-eval cubes with 21cm PS
+   (saturated spin temperature limit; T_S >> T_CMB)
+
+3) 3 astrophysical parameter model, co-eval cubes with 21cm PS
+   (full spin temperature computation)
+
+4) 6 astrophysical parameter model, co-eval cubes with 21cm PS
+   (full spin temperature computation)
+
+5) 6 astrophysical parameter model, light-cone cubes with 21cm PS
+   (full spin temperature computation)
+
+6) 11 astrophysical/cosmological parameter model, co-eval cubes with 21cm PS
+   (full spin temperature computation)
+
+7) 11 astrophysical/cosmological parameter model, light-cone cubes with 21cm PS
+   (full spin temperature computation)
+
+8) Varying the number of astrophysical/cosmological parameters (between 1 and 11) 
+
+9) Adding any of the inbuilt observational priors 
+
+10) Using the global signal instead (using co-eval or light-cone)
+______________________________________________________________________________________
+
+
+
+1) 3 astrophysical parameter model, co-eval cubes with 21cm power spectrum (PS) 
+   (saturated spin temperature limit; T_S >> T_CMB)
+
+- This corresponds to the original 21CMMC (the introductory 2015 publication)
+
+
+- Set redshifts of co-eval boxes (i.e. mock 21cm PS).
+
+  e.g. Redshift = ['8.237142', '9.402521', '10.714930']
+
+
+- Set redshifts of co-eval boxes that aren’t used in the likelihood computation (i.e. 
+  to boost sampling for application of priors or for more output 21cm).
+
+  e.g. Redshifts_For_Prior = ['6.429094','14.457590','17.111031']
+
+
+Flags to set to achieve this:
+
+GenerateNewICs = False		(uses a pre-computed density field. Can be set to True)
+Include_Ts_fluc = False		(setting false assumes T_S >> T_CMB)
+IncludeLightCone = False	(as we are doing co-eval)
+USE_INHOMO_RECO = False		(inhomogeneous recombinations requires previous
+				time-steps)
+IncludeAlpha = False		(3 parameter model has a constant ionising efficiency)
+
+CosmologyToVary = []		(Not varying cosmology)
+UseFcollTable = False		(Only useful for spin temperature fluctuations)
+USE_IONISATION_FCOLL_TABLE = False
+				(Only useful for light-cone/spin temperature fluctuations)
+USE_GLOBAL_SIGNAL = False	(Want the 21cm PS, not the global signal)
+
+
+Optional flags to toggle:
+
+INCLUDE_SUBCELL_RSDS = False	(Can toggle line-of-sight RSDs on/off)
+KEEP_ALL_DATA = True		(Whether or not to store the output data)
+
+
+______________________________________________________________________________________
+
+
+2) 4 astrophysical parameter model, co-eval cubes with 21cm PS
+   (saturated spin temperature limit; T_S >> T_CMB)
+
+Same as above, however, switch IncludeAlpha = True (i.e. the fourth parameter) 
+
+
+______________________________________________________________________________________
+
+
+3) 3 astrophysical parameter model, co-eval cubes with 21cm PS
+   (full spin temperature computation)
+
+- Set redshifts of co-eval boxes (i.e. mock 21cm PS).
+  
+  Note, that these redshifts must correspond to the redshifts at which the spin temperature
+  fluctuation algorithm is computed at. If not, the spin temperature field will not be used
+  properly for the ionisation box.
+
+  e.g. Redshift = ['8.237142', '9.402521', '10.714930']
+
+
+- Set redshifts of co-eval boxes that aren’t used in the likelihood computation (i.e. 
+  to boost sampling for application of priors or for more output 21cm).
+
+  e.g. Redshifts_For_Prior = ['6.429094','14.457590','17.111031']
+
+
+Flags to set to achieve this:
+
+GenerateNewICs = False		(uses a pre-computed density field. Can be set to True)
+Include_Ts_fluc = True		(Want to compute spin temperature fluctuations, so set to True)
+IncludeLightCone = False	(as we are doing co-eval)
+IncludeAlpha = False		(Must be set to false when Include_Ts_fluc is True)
+
+CosmologyToVary = []		(Not varying cosmology)
+USE_GLOBAL_SIGNAL = False	(Want the 21cm PS, not the global signal)
+
+
+Optional flags to toggle:
+
+INCLUDE_SUBCELL_RSDS		(Can toggle line-of-sight RSDs on/off)
+KEEP_ALL_DATA			(Whether or not to store the output data)
+
+USE_INHOMO_RECO			(inhomogeneous recombinations can be set here, however, in 
+				doing so, the Rmfp parameter will be removed)
+
+UseFcollTable			(Can boost computational efficiency by using this interpolation
+				table. Check 21CMMC.py, ScriptDescriptions.txt and CreateFcollTable.c
+				for further details on its proper usage)
+
+USE_IONISATION_FCOLL_TABLE	(Can boost computational efficiency by using this interpolation
+				table. Check 21CMMC.py, ScriptDescriptions.txt, Create_ionisaton_fcoll_tables.py and Createfcoll_ionisation_LC.c for further details)
+
+
+______________________________________________________________________________________
+
+
+
+4) 6 astrophysical parameter model, co-eval cubes with 21cm PS
+   (full spin temperature computation)
+
+
+- Set redshifts of co-eval boxes (i.e. mock 21cm PS).
+  
+  Note, that these redshifts must correspond to the redshifts at which the spin temperature
+  fluctuation algorithm is computed at. If not, the spin temperature field will not be used
+  properly for the ionisation box.
+
+  e.g. Redshift = ['8.237142', '9.402521', '10.714930']
+
+
+- Set redshifts of co-eval boxes that aren’t used in the likelihood computation (i.e. 
+  to boost sampling for application of priors or for more output 21cm).
+
+  e.g. Redshifts_For_Prior = ['6.429094','14.457590','17.111031']
+
+
+Flags to set to achieve this:
+
+GenerateNewICs = False		(uses a pre-computed density field. Can be set to True)
+Include_Ts_fluc = True		(Want to compute spin temperature fluctuations, so set to True)
+IncludeLightCone = False	(as we are doing co-eval)
+IncludeAlpha = False		(Must be set to false when Include_Ts_fluc is True)
+
+CosmologyToVary = []		(Not varying cosmology)
+USE_GLOBAL_SIGNAL = False	(Want the 21cm PS, not the global signal)
+
+
+Optional flags to toggle:
+
+INCLUDE_SUBCELL_RSDS		(Can toggle line-of-sight RSDs on/off)
+KEEP_ALL_DATA			(Whether or not to store the output data)
+
+USE_INHOMO_RECO			(inhomogeneous recombinations can be set here, however, in 
+				doing so, the Rmfp parameter will be removed)
+
+UseFcollTable			(Can boost computational efficiency by using this interpolation
+				table. Check 21CMMC.py, ScriptDescriptions.txt and CreateFcollTable.c
+				for further details on its proper usage)
+
+USE_IONISATION_FCOLL_TABLE	(Can boost computational efficiency by using this interpolation
+				table. Check 21CMMC.py, ScriptDescriptions.txt, Create_ionisaton_fcoll_tables.py and Createfcoll_ionisation_LC.c for further details)
+
+
+______________________________________________________________________________________
+
+
+
+5) 6 astrophysical parameter model, light-cone cubes with 21cm PS
+   (full spin temperature computation)
+
+- Set all redshifts to zero
+  e.g. Redshift = [] and Redshifts_For_Prior = []
+
+  It is the light-cone, so these don’t need to be set (it will override any input values anyway)
+
+
+Flags to set to achieve this:
+
+GenerateNewICs = False		(uses a pre-computed density field. Can be set to True)
+Include_Ts_fluc = True		(Want to compute spin temperature fluctuations, so set to True)
+IncludeLightCone = True		(as we are doing light-cone)
+IncludeAlpha = False		(Must be set to false when Include_Ts_fluc is True)
+
+CosmologyToVary = []		(Not varying cosmology)
+USE_GLOBAL_SIGNAL = False	(Want the 21cm PS, not the global signal)
+
+
+Optional flags to toggle:
+
+INCLUDE_SUBCELL_RSDS		(Can toggle line-of-sight RSDs on/off)
+KEEP_ALL_DATA			(Whether or not to store the output data)
+
+USE_INHOMO_RECO			(inhomogeneous recombinations can be set here, however, in 
+				doing so, the Rmfp parameter will be removed)
+
+UseFcollTable			(Can boost computational efficiency by using this interpolation
+				table. Check 21CMMC.py, ScriptDescriptions.txt and CreateFcollTable.c
+				for further details on its proper usage)
+
+USE_IONISATION_FCOLL_TABLE	(Can boost computational efficiency by using this interpolation
+				table. Check 21CMMC.py, ScriptDescriptions.txt, Create_ionisaton_fcoll_tables.py and Createfcoll_ionisation_LC.c for further details)
+
+
+______________________________________________________________________________________
+
+
+
+6) 11 astrophysical/cosmological parameter model, co-eval cubes with 21cm PS
+   (full spin temperature computation)
+
+
+- Set redshifts of co-eval boxes (i.e. mock 21cm PS).
+  
+  Note, that these redshifts must correspond to the redshifts at which the spin temperature
+  fluctuation algorithm is computed at. If not, the spin temperature field will not be used
+  properly for the ionisation box.
+
+  e.g. Redshift = ['8.237142', '9.402521', '10.714930']
+
+
+- Set redshifts of co-eval boxes that aren’t used in the likelihood computation (i.e. 
+  to boost sampling for application of priors or for more output 21cm).
+
+  e.g. Redshifts_For_Prior = ['6.429094','14.457590','17.111031']
+
+
+Flags to set to achieve this:
+
+GenerateNewICs = True		(if cosmology is varied, this must be set to True)
+Include_Ts_fluc = True		(Want to compute spin temperature fluctuations, so set to True)
+IncludeLightCone = False	(as we are doing co-eval)
+IncludeAlpha = False		(Must be set to false when Include_Ts_fluc is True)
+
+CosmologyToVary = ['SIGMA_8','littleh','OMEGA_M','OMEGA_b','NS']		
+				(To vary all available cosmological parameters)
+USE_GLOBAL_SIGNAL = False	(Want the 21cm PS, not the global signal)
+
+UseFcollTable = False		(This interpolation table is generated for one set of ICs. Cannot
+				be used if the ICs are varied and/or cosmological parameters are
+				varied)
+USE_IONISATION_FCOLL_TABLE = False
+				(This interpolation table is generated for one set of ICs. Cannot
+				be used if the ICs are varied and/or cosmological parameters are
+				varied)
+
+Optional flags to toggle:
+
+INCLUDE_SUBCELL_RSDS		(Can toggle line-of-sight RSDs on/off)
+KEEP_ALL_DATA			(Whether or not to store the output data)
+
+USE_INHOMO_RECO			(inhomogeneous recombinations can be set here, however, in 
+				doing so, the Rmfp parameter will be removed)
+
+
+______________________________________________________________________________________
+
+
+
+7) 11 astrophysical/cosmological parameter model, light-cone cubes with 21cm PS
+   (full spin temperature computation)
+
+
+Same as 6), but setting IncludeLightCone = True
+
+
+______________________________________________________________________________________
+
+
+
+8) Varying the number of astrophysical/cosmological parameters (between 1 and 11) 
+
+
+This is purely to do with altering the number of free parameters. Some combination of 
+which can be applied to any number of the existing examples.
+
+The 7 astrophysical parameters can be fixed/varied by toggling the following False/True.
+7 as this does technically include a mass-dependent scaling, but it doesn’t work outside
+of the saturated spin temperature limit (T_S >> T_CMB).
+
+param_legend['ALPHA'] = False
+param_legend['ZETA'] = True
+param_legend['MFP'] = True
+param_legend['TVIR_MIN'] = True
+param_legend['L_X'] = True
+param_legend['NU_X_THRESH'] = True
+param_legend['X_RAY_SPEC_INDEX'] = True
+
+- Note, param_legend['ALPHA'] = False must be set if spin temperature fluctuations are included.
+
+- if USE_INHOMO_RECO = True, param_legend['MFP'] is automatically set to False (i.e. not varied).
+
+The 5 cosmological parameters can be varied by setting the CosmologyToVary to a non-zero list
+
+The 5 options to vary are CosmologyToVary = ['SIGMA_8','littleh','OMEGA_M','OMEGA_b','NS’]. 
+The user can pick between 0 and all 5 of the parameters.
+
+
+______________________________________________________________________________________
+
+
+
+9) Adding any of the inbuilt observational priors 
+
+
+21CMMC comes with the option of three observational priors:
+
+i)   Electron scattering optical depth, \tau (Planck 2016)
+ii)  McGreer et. al (2015) dark gaps statistics
+iii) Greig et. al (2017) constraint on the IGM neutral fraction (z = 7.1 QSO ULASJ1120)
+
+Any of these flags can be used by setting either of “IncludePlanck”, “IncludeMcGreer” 
+or “IncludeGreig” to True
+
+To use (i), at least 3 redshift must be provided (preferably more), as it attempts to 
+interpolate the reionisation history (xHI vs z) to compute the optical depth. To boost 
+the sampling of this, can add redshifts to the “Redshifts_For_Prior” list. Remember, if
+spin temperature fluctuations are included, the added redshifts must match the sampled
+redshifts of the spin temperature computation.
+
+For either (ii) or (iii) extrapolation/interpolation is used to sample the reionisation
+history (unless “Redshifts_For_Prior” contains the exact redshift of the prior and 
+T_S >> T_CMB). If spin temperature fluctuations are used, make sure there are redshifts 
+near the redshifts of the prior to ensure more accurate estimation of the IGM neutral 
+fraction.
+
+
+______________________________________________________________________________________
+
+
+
+10) Using the global signal instead
+
+Same as 3) - 9), except setting USE_GLOBAL_SIGNAL = True
+
+To investigate the global signal, spin temperature fluctuations must be used as it requires
+sampling redshifts into the cosmic dawn.
+
+
+- For the co-eval case:
+
+
+  Using the co-eval case enables the global signal to be evaluated faster
+
+  The user just needs to provide sufficiently high sampling of the redshifts using either the
+  Redshift or Redshifts_For_Prior lists. Any redshift entered here is output into the global 
+  average text file that is used for evaluating the global signal. It uses spline sampling, 
+  hence can use coarser redshift sampling. Note however that the redshift sampling must still
+  correspond with the redshift sampling of the spin temperature fluctuation output.
+
+
+- For the light-cone case:
+
+  Running the global signal with the light-cone flag set ensures fine sampling in redshift (frequency)
+  Don’t need to worry about setting the redshifts for Redshift or Redshifts_For_Prior.
+
+
+The user can additionally pick from either fixed global signal errors, or their own pre-defined
+errors. Not that if your own errors are used, be sure that you have the data in the correct 
+format (see the discussion in 21CMMC.py for more explicit details).

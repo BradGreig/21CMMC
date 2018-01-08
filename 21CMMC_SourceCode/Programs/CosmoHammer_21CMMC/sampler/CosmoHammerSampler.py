@@ -33,29 +33,33 @@ class CosmoHammerSampler(object):
     """
 
     def __init__(self, params,likelihoodComputationChain, filePrefix, walkersRatio, burninIterations, 
-                 sampleIterations, Redshift, filethin = 1, stopCriteriaStrategy=None, initPositionGenerator=None, 
+                 sampleIterations, FiducialParams, param_legend, LowerBound_XRAY, UpperBound_XRAY, SpinTz, 
+                 filethin = 1, stopCriteriaStrategy=None, initPositionGenerator=None, 
                  storageUtil=None, threadCount=1, reuseBurnin=False):
         """
         CosmoHammer sampler implementation
 
         """
-        self.paramValues = params[:,0]
-        self.paramWidths = params[:,3]
-
         self.likelihoodComputationChain = likelihoodComputationChain
         self.walkersRatio = walkersRatio
         self.reuseBurnin = reuseBurnin
         self.filePrefix = filePrefix
         self.threadCount = threadCount
-        self.paramCount = len(self.paramValues)
+        self.paramCount = len(params[:,0])
         self.nwalkers = self.paramCount*walkersRatio
         self.burninIterations = burninIterations
         self.sampleIterations = sampleIterations
         self.filethin = filethin  
-        self.Redshift = Redshift
 
-        self.lowerbounds = params[:,1]
-        self.upperbounds = params[:,2]
+        self.FiducialParams = FiducialParams
+        self.param_legend = param_legend
+
+        self.LowerBound_XRAY = LowerBound_XRAY
+        self.UpperBound_XRAY = UpperBound_XRAY
+        self.SpinTz = SpinTz        
+
+        self.lowerbounds = params[:,0]
+        self.upperbounds = params[:,1]
         
         assert sampleIterations > 0, "CosmoHammer needs to sample for at least one iterations"
         
@@ -285,7 +289,6 @@ class CosmoHammerSampler(object):
         """
         desc = "Sampler: " + str(type(self))+"\n" \
                 "configuration: \n" \
-                "  Params: " +str(self.paramValues)+"\n" \
                 "  Burnin iterations: " +str(self.burninIterations)+"\n" \
                 "  Samples iterations: " +str(self.sampleIterations)+"\n" \
                 "  Walkers ratio: " +str(self.walkersRatio)+"\n" \

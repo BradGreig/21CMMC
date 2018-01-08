@@ -15,6 +15,7 @@ __all__ = ["EnsembleSampler"]
 
 import multiprocessing
 import numpy as np
+import os
 
 try:
     import acor
@@ -400,6 +401,15 @@ class EnsembleSampler(Sampler):
         if np.any(np.isnan(p)):
             raise ValueError("At least one parameter value was NaN.")
 
+#        for i in range(len(p)):
+#                p = multiprocessing.Process(target=self.lnprobfn,args=(p[i],))
+#                # Pin created processes in a round-robin
+#                print(i,i % multiprocessing.cpu_count(),p.pid)
+#                os.system("taskset -p -c %d %d" % ((i % multiprocessing.cpu_count()), p.pid))
+#                p.start()
+
+#	multiprocessing.log_to_stderr(logging.DEBUG)
+
         # If the `pool` property of the sampler has been set (i.e. we want
         # to use `multiprocessing`), use the `pool`'s map method. Otherwise,
         # just use the built-in `map` function.
@@ -410,6 +420,7 @@ class EnsembleSampler(Sampler):
 
         # Run the log-probability calculations (optionally in parallel).
         results = list(M(self.lnprobfn, [p[i] for i in range(len(p))]))
+
         try:
             lnprob = np.array([float(l[0][0]) for l in results])
             neutral_fractions = np.array([[float(l[0][1][j]) for j in range(len(l[0][1]))] for l in results])

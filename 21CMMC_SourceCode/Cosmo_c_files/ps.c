@@ -13,6 +13,7 @@
 #include <gsl/gsl_spline.h>
 #include "cosmo_progs.c"
 #include "misc.c"
+#include "../Parameter_files/Variables.h"
 
 /* New in v1.1 */
 #define ERFC_NPTS (int) 75
@@ -137,6 +138,7 @@ double get_M_min_ion(float z);
 /* Returns the minimum source mass for ionizing sources, according to user specifications */
 double get_M_min_ion(float z){
   double MMIN;
+    
   if (ION_M_MIN < 0){ // use the virial temperature for Mmin
     if (ION_Tvir_MIN < 9.99999e3) // neutral IGM
       MMIN = TtoM(z, ION_Tvir_MIN, 1.22);
@@ -356,8 +358,12 @@ double FgtrM_st(double z, double M){
   lower_limit = log(M);
   upper_limit = log(FMAX(1e16, M*100));
 			   
-  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
-		       1000, GSL_INTEG_GAUSS61, w, &result, &error); 
+//  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS61, w, &result, &error);
+//  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS51, w, &result, &error);
+  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS41, w, &result, &error);
+//  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS31, w, &result, &error);
+//  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS21, w, &result, &error);
+//  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS15, w, &result, &error);
   gsl_integration_workspace_free (w);
 
   return result / (OMm*RHOcrit);
@@ -387,8 +393,9 @@ double FgtrM_bias(double z, double M, double del_bias, double sig_bias){
   sigsmallR = sigma_z0(M);
 
   if (!(sig_bias < sigsmallR)){ // biased region is smaller that halo!
-    fprintf(stderr, "FgtrM_bias: Biased region is smaller than halo!\nResult is bogus.\n");
-    return 0;
+//    fprintf(stderr, "FgtrM_bias: Biased region is smaller than halo!\nResult is bogus.\n");
+//    return 0;
+      return 0.000001;
   }
 
   del = Deltac/dicke(z) - del_bias;
@@ -403,8 +410,9 @@ double sigmaparam_FgtrM_bias(float z, float sigsmallR, float del_bias, float sig
   double del, sig;
 
   if (!(sig_bias < sigsmallR)){ // biased region is smaller that halo!
-    fprintf(stderr, "local_FgtrM_bias: Biased region is smaller than halo!\nResult is bogus.\n");
-    return 0;
+//    fprintf(stderr, "local_FgtrM_bias: Biased region is smaller than halo!\nResult is bogus.\n");
+//    return 0;
+      return 0.000001;
   }
 
   del = Deltac/dicke(z) - del_bias;
@@ -594,8 +602,9 @@ double sigma_z0(double M){
   upper_limit = kend;//log(kend);
 
   F.function = &dsigma_dk;
-  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
-		       1000, GSL_INTEG_GAUSS61, w, &result, &error); 
+//  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS61, w, &result, &error);
+//    gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS41, w, &result, &error);
+  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS15, w, &result, &error);
   gsl_integration_workspace_free (w);
   
   return sigma_norm * sqrt(result);
@@ -746,8 +755,8 @@ double dsigmasqdm_z0(double M){
   d2fact = M*10000/sigma_z0(M);
 
   F.function = &dsigmasq_dm;
-  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,
-		       1000, GSL_INTEG_GAUSS61, w, &result, &error); 
+  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS61, w, &result, &error);
+//  gsl_integration_qag (&F, lower_limit, upper_limit, 0, rel_tol,1000, GSL_INTEG_GAUSS15, w, &result, &error);
   gsl_integration_workspace_free (w);
   
   return sigma_norm * sigma_norm * result /d2fact;
@@ -1151,8 +1160,8 @@ double FgtrM_general(float z, float M1, float M_Max, float M2, float MFeedback, 
         lower_limit = M1;
         upper_limit = M_Max;
         
-        gsl_integration_qag (&Fx, lower_limit, upper_limit, 0, rel_tol, size, GSL_INTEG_GAUSS15, w, &result, &error);
-        //        gsl_integration_qag (&Fx, lower_limit, upper_limit, 0, rel_tol, size, GSL_INTEG_GAUSS61, w, &result, &error);
+//        gsl_integration_qag (&Fx, lower_limit, upper_limit, 0, rel_tol, size, GSL_INTEG_GAUSS15, w, &result, &error);
+        gsl_integration_qag (&Fx, lower_limit, upper_limit, 0, rel_tol, size, GSL_INTEG_GAUSS61, w, &result, &error);
         gsl_integration_workspace_free (w);
         
         if(delta2 > delta1) {

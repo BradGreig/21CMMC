@@ -1,14 +1,44 @@
 #include "../Parameter_files/INIT_PARAMS.H"
 #include "../Parameter_files/ANAL_PARAMS.H"
+#include "../Parameter_files/Variables.h"
 
 int main(int argc, char ** argv){
 
     char filename[500];
+    char dummy_string[500];
     FILE *F;
     
     int i,N_REDSHIFTS;
     
     float taue;
+    
+    INDIVIDUAL_ID = atof(argv[1]);
+    INDIVIDUAL_ID_2 = atof(argv[2]);
+    
+    double *PARAM_COSMOLOGY_VALS = calloc(TOTAL_COSMOLOGY_FILEPARAMS,sizeof(double));
+    
+    /////////////////   Read in the cosmological parameter data     /////////////////
+    
+    sprintf(filename,"WalkerCosmology_%1.6lf_%1.6lf.txt",INDIVIDUAL_ID,INDIVIDUAL_ID_2);
+    F = fopen(filename,"rt");
+    
+    for(i=0;i<TOTAL_COSMOLOGY_FILEPARAMS;i++) {
+        fscanf(F,"%s\t%lf\n",&dummy_string,&PARAM_COSMOLOGY_VALS[i]);
+    }
+    fclose(F);
+    
+    // Assign these values. Hard-coded, so order is important
+    RANDOM_SEED = (unsigned long long)PARAM_COSMOLOGY_VALS[0];
+    SIGMA8 = (float)PARAM_COSMOLOGY_VALS[1];
+    hlittle = (float)PARAM_COSMOLOGY_VALS[2];
+    OMm = (float)PARAM_COSMOLOGY_VALS[3];
+    OMl = (float)PARAM_COSMOLOGY_VALS[4];
+    OMb = (float)PARAM_COSMOLOGY_VALS[5];
+    POWER_INDEX = (float)PARAM_COSMOLOGY_VALS[6]; //power law on the spectral index, ns
+    
+    
+    
+    
     
     // Minus 3 for argv[0]=0, Random ID (argv[1]) and Zeta (argv[2])
     // Use Zeta just incase the Random ID ends up the same (shouldn't happen)
