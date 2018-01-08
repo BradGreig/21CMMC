@@ -2,6 +2,7 @@
 #define COSMOLOGY_H
 
 #include <math.h>
+#include "Variables.h"
 
 /****** New in v1.1. ******/
 /*** WDM parameters ***/
@@ -10,18 +11,21 @@
 #define g_x (float) 1.5 /* degrees of freedom of WDM particles; 1.5 for fermions */
 
 
+// Some cosmological parameters are now obtained from a textfile which is taken as input. Required
+// for sampling the cosmological parameters in 21CMMC.
+
 /* COSMOLOGICAL PARAMETERS */
-#define SIGMA8 (0.8149) // rms mass fluctuation on 8/hlittle Mpc scales at z=0
-#define hlittle (0.6781) // little hubble h
-#define OMm  (0.308) // at z=0
-#define OMl  (0.692) // at z=0
-#define OMb  (0.0484) // at z=0
+//#define SIGMA8 (0.815) // rms mass fluctuation on 8/hlittle Mpc scales at z=0
+//#define hlittle (0.678) // little hubble h
+//#define OMm  (0.308) // at z=0
+//#define OMl  (float) (1.0-OMm) // at z=0
+//#define OMb  (float) ((0.02226/hlittle)/hlittle) // at z=0
 #define OMn  (0.0)
 #define OMk  (0.0)
 #define OMr  (8.6e-5)
 #define OMtot (1.0)
-#define Y_He (0.24)
-#define POWER_INDEX (0.9677) /* power law index for the power spectrum */
+#define Y_He (0.245)
+//#define POWER_INDEX (0.968) /* power law index for the power spectrum */
 #define wl   (-1.0) /* dark energy equation of state parameter (wl = -1 for vacuum ) */
 
 /* 
@@ -60,11 +64,13 @@
 
 
 /* CONSTANTS */
-#define SIGMAT (double) 6.6524e-25  /* Thomson scattering cross section in cm^-2 */
-#define E (double) 2.71828182846
-#define PI (double) 3.14159265358979323846264338327
-#define TWOPI (double) 2*PI
-#define FOURPI (double) 4*PI
+#define LN10 (double) (2.30258509299)
+#define SIGMAT (double) (6.6524e-25)  /* Thomson scattering cross section in cm^-2 */
+#define SIGMA_HI (double) (6.3e-18)  /* HI ionization  cross section at 13.6 eV in cm^-2 */
+#define E (double) (2.71828182846)
+#define PI (double) (3.14159265358979323846264338327)
+#define TWOPI (double) (2.0*PI)
+#define FOURPI (double) (4.0*PI)
 #define G (double) 6.67259e-8 /* cm^3 g^-1 s^-2*/
 #define hplank (double) 6.62606896e-27 /* erg s */
 #define TINY (double) 1e-30

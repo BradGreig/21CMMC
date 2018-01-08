@@ -7,7 +7,7 @@
    Minimum halo mass counted as contributing ionizing photons in the bubble code.
    
 */
-#define ION_M_MIN (double) -1
+#define ION_M_MIN (double) (-1)
 /* OR define it as a redshift-dependent halo virial temperature.. 
  NOTE: SET THE ONE YOU AREN'T USING TO A NEGATIVE VALUE.
  NOTE: If you are using the halo finder and studying redshift evolution over a 
@@ -15,7 +15,79 @@
        since the discretization of the halo mass by the halo finder might lead
        to redshift discontinuities.
 */
-#define ION_Tvir_MIN (double) 1e4
+
+// A free parameter in 21CMMC, so removed the definition from here
+
+//#define ION_Tvir_MIN (double) (3e4)
+
+/*
+  HII efficiency factor, commonly refered to as \zeta: i.e. number of ionizing photons escaping into the IGM
+  per baryon.
+
+  NEW in v1.2:  The ionizing efficiency is allowed to have a power law dependence on halo mass:
+  \zeta = HII_EFF_FACTOR * (M_halo / ION_M_MIN)^EFF_FACTOR_PL_INDEX
+  see Nion_note.pdf in the root folder.
+*/
+
+// A free parameter in 21CMMC, so removed the defintion from here
+
+//#define HII_EFF_FACTOR (float) (20)
+
+
+/*
+  NEW IN V1.2: power law index for the ionizing efficiency scaling with halo mass:
+  \zeta = HII_EFF_FACTOR * (M_halo / ION_M_MIN)^EFF_FACTOR_PL_INDEX
+
+  The traditional constant mass to ionizing light ratio (as is assumed in previous versions,
+  is obtained by setting EFF_FACTOR_PL_INDEX to zero.
+ */
+
+// A free parameter in 21CMMC, so removed the defintion from here
+
+//#define EFF_FACTOR_PL_INDEX (float) (0)
+
+
+/*
+  Maximum horizon for ionizing photons, in comoving Mpc.
+  The bubble filtering procedure uses the minimum
+  value of L_FACTOR*BOX_LEN and R_BUBBLE_MAX as the maximum allowed
+  radius of a single, cohesive ionized region. (in practice, the ionization
+  field is extreemly insensitive to this choice)
+ 
+  If setting IHOMO_RECO below to 1, R_BUBBLE_MAX should be at least ~20Mpc,
+  physically corresponding to the mfp at the end of the EoR.
+  Results during the EoR are insensitive to this choice.
+*/
+
+// A free parameter in 21CMMC, so removed the definition from here
+
+//#define R_BUBBLE_MAX (float) (20)
+
+/*
+ INHOMO_RECO = 1 compute inhomogeneous recombinations, ala Sobacchi & Mesinger (2014).
+ This *requires* stepping down in redshift, e.g. using drive_logZscroll_Ts.c or  drive_zscroll_noTs.c
+ */
+
+// A flag option now set in 21CMMC.py (variable set in Variables.h)
+
+//#define INHOMO_RECO (int) (1)
+
+/*
+ Power law index of the UVB during the EoR.  This is only used if INHOMO_RECO is on, in order to compute the
+ local mean free path inside the cosmic HII regions
+ */
+
+#define ALPHA_UVB (float) (5)
+
+
+/*
+ Typical star-formation timescale, in units of the Hubble time.  This is used to compute the UVB if inhomo_reco is on.
+ */
+
+//#define t_STAR (float) (0.5)
+
+
+
 
 
 /*
@@ -27,13 +99,13 @@
                 If choosing this option, make sure that you resolve small 
 		enough scales, roughly we find BOX_LEN/DIM should be < 1Mpc
  */
-#define EVOLVE_DENSITY_LINEARLY (int) 0
+#define EVOLVE_DENSITY_LINEARLY (int) (0)
 
 
 /*
   If set to 1, the ZA density field is additionally smoothed (asside from the implicit
   boxcar smoothing performed when re-binning the ICs from DIM to HII_DIM) with a Gaussian
-  filter of width 0.2*BOX_LEN/HII_DIM.  The implicit boxcar smoothing in perturb_field.c
+  filter of width R_smooth_density*BOX_LEN/HII_DIM.  The implicit boxcar smoothing in perturb_field.c
   bins the density field on scale DIM/HII_DIM, similar to what Lagrangian codes do 
   when constructing Eulerian grids. In other words, the density field, \delta,
   is quantized into (DIM/HII_DIM)^3 values. If your usage requires smooth density fields,
@@ -41,16 +113,16 @@
   present in all grid based codes, though it overcompensates by an effective loss in resolution.
   New in v1.1
  */
-#define SMOOTH_EVOLVED_DENSITY_FIELD (int) 1
+#define SMOOTH_EVOLVED_DENSITY_FIELD (int) (0)
+#define R_smooth_density (float) (0.2)
 
 /*
-  HII efficiency factor (c.f FZH04) 
-   a bubble is said to be ionized if it's collapsed fraction is
-   greater than 1/HII_EFF_FACTOR
+  Use second-order Lagrangian perturbation theory (2LPT).
+  Set this to 1 if the density field or the halo positions are extrapolated to low redshifts.
+  The current implementation is very naive and add a factor ~6 to the memory requirements.
+  Reference: Scoccimarro R., 1998, MNRAS, 299, 1097-1118 Appendix D  
 */
-#define HII_EFF_FACTOR (float) 31.5
-
-
+#define SECOND_ORDER_LPT_CORRECTIONS (int) (1)
 
 /*
   Allows one to set a flag allowing find_HII_bubbles to skip constructing the 
@@ -61,7 +133,7 @@
 
   This is a new option in v1.1. Previous versions had a hardcoded value of 1e-15.
 */
-#define HII_ROUND_ERR (float) 1e-3
+#define HII_ROUND_ERR (float) (1e-3)
 
 
 /*
@@ -73,22 +145,13 @@
   in mostly ionized unverses, so only use for lower resolution boxes (HII_DIM<~400)
   2 - Center pixel only method (Zahn et al. 2007). this is faster.
 */
-#define FIND_BUBBLE_ALGORITHM (int) 2
-
-/*
-  Maximum allowed bubble size (presumably set by recombinations or ionizing photon
-  m.f.p. in most case.  The bubble filtering procedure uses the minimum
-  value of L_FACTOR*BOX_LEN and R_BUBBLE_MAX as the maximum allowed
-  radius of a single, cohesive ionized region. (in practice, the ionization
-  field is extreemly insensitive to this choice)
-*/
-#define R_BUBBLE_MAX (float) 30
+#define FIND_BUBBLE_ALGORITHM (int) (2)
 
 /* 
    Minimum radius of an HII region in cMpc.  One can set this to 0, but should be careful with
    shot noise if the find_HII_bubble algorithm is run on a fine, non-linear density grid.
  */
-#define R_BUBBLE_MIN (float) 1 
+#define R_BUBBLE_MIN (float) (L_FACTOR*1)
 
 
 /*
@@ -100,7 +163,7 @@
   is small).  However, option (0) is faster as it bypasses the halo finder, and it becomes
   increasingly accurate as the typical bubble size increases.
 */
-#define USE_HALO_FIELD (int) 0
+#define USE_HALO_FIELD (int) (0)
 
 
 /*
@@ -115,7 +178,7 @@
   it is recommended to turn off this feature, as halos can stocastically
   "pop in and out of" existance from one redshift to the next...
 */
-#define N_POISSON (int) -1
+#define N_POISSON (int) (-1)
 
 
 /*
@@ -125,7 +188,7 @@
   NOTE: The approximation used to include peculiar velocity effects works 
   only in the linear regime, so be careful using this (see Mesinger+2010)
 */
-#define T_USE_VELOCITIES (int) 1
+#define T_USE_VELOCITIES (int) (1)
 
 /*                                                                                                    
   Maximum velocity gradient along the line of sight in units of the hubble parameter at z.
@@ -135,7 +198,7 @@
   a good approximation at the <~10% level.  Future builds will include the mao+ model for
   redshift space distortions.
 */
-#define MAX_DVDR (float) 0.2
+#define MAX_DVDR (float) (0.2)
 
 /*
   Component of the velocity to be used in 21-cm temperature maps
@@ -143,18 +206,18 @@
   2 = y
   3 = z
 */
-#define VELOCITY_COMPONENT (int) 3
+#define VELOCITY_COMPONENT (int) (3)
 
 
 /*
   0 = plot 21cm temperature power spectrum in non-dimensional units
   1 = plot 21cm...  in mK^2
 */
-#define DIMENSIONAL_T_POWER_SPEC (int) 1
+#define DIMENSIONAL_T_POWER_SPEC (int) (1)
 
-#define DELTA_R_FACTOR (float) 1.1 // factor by which to scroll through filter radius for halos
+#define DELTA_R_FACTOR (float) (1.1) // factor by which to scroll through filter radius for halos
 
-#define DELTA_R_HII_FACTOR (float) 1.1 // factor by which to scroll through filter radius for bubbles
+#define DELTA_R_HII_FACTOR (float) (1.1) // factor by which to scroll through filter radius for bubbles
 
 /*
 Factor of the halo's radius, R, so that the effective radius
@@ -164,14 +227,14 @@ R_OVERLAP_FACTOR = 1 is fully disjoint
 R_OVERLAP_FACTOR = 0 means that centers are allowed to luy on the edges of
 neighboring halos
 */
-#define R_OVERLAP_FACTOR (float) 1.0
+#define R_OVERLAP_FACTOR (float) (1.0)
 
 /*
 0 = delta_crit is constant 1.68
 1 = delta_crit is the sheth tormen ellipsoidal collapse
     correction to delta_crit (see ps.c)
 */
-#define DELTA_CRIT_MODE (int) 1
+#define DELTA_CRIT_MODE (int) (1)
 
 
 /*
@@ -180,7 +243,7 @@ Filter for the density field used to generate the halo field with EPS
 1 = use k-space top hat filter
 2 = use gaussian filter
 */
-#define HALO_FILTER (int) 0
+#define HALO_FILTER (int) (0)
 
 /*
 Filter for the Halo or density field used to generate ionization field
@@ -188,17 +251,17 @@ Filter for the Halo or density field used to generate ionization field
 1 = use k-space top hat filter
 2 = use gaussian filter
 */
-#define HII_FILTER (int) 1
+#define HII_FILTER (int) (1)
 
 /*
   0 = don't run the optimization code for zscroll (only useful at low-z)
   1 = do run ...
 */
-#define OPTIMIZE (0)
+#define OPTIMIZE (int) (0)
 /*
   Minimum mass for which the optimization algorithm will be used
 */
-#define OPTIMIZE_MIN_MASS (1e11)
+#define OPTIMIZE_MIN_MASS (float) (1e11)
 
 #define SIZE_RANDOM_SEED (-23456789) // seed for the size dist random number generator
 #define LOS_RANDOM_SEED (-123456789) // seed for the extract LOS random number generator
@@ -207,9 +270,9 @@ Filter for the Halo or density field used to generate ionization field
 
 /************  END USER CHANGABLE DEFINITIONS  **************/
 
-#define L_FACTOR (float) 0.620350491 // factor relating cube length to filter radius = (4PI/3)^(-1/3)
+#define L_FACTOR (float) (0.620350491) // factor relating cube length to filter radius = (4PI/3)^(-1/3)
 
-#define HII_D (unsigned long long) HII_DIM
+#define HII_D (unsigned long long) (HII_DIM)
 #define HII_MIDDLE (HII_DIM/2)
 #define HII_MID ((unsigned long long)HII_MIDDLE)
 

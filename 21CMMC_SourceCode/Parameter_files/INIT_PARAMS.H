@@ -11,11 +11,11 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <complex.h>
 #include <time.h>
 #include <string.h>
 //#include <pthread.h>
 #include <omp.h>
+#include <complex.h>
 #include <fftw3.h>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_integration.h>
@@ -26,28 +26,32 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_errno.h>
 #include "COSMOLOGY.H"
+#include "Variables.h"
 
 
 /******** BEGIN USER CHANGABLE DEFINITIONS   **********/
-//#define RANDOM_SEED (long) (300) // seed for the random number generator (used for MCMC runs currently)
-#define RANDOM_SEED (long) (1000)
 
-//#define BOX_LEN (float) 500 // in Mpc
-#define BOX_LEN (float) 250 // in Mpc
-//#define DIM (int) 1536 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define DIM (int) 1024 // number of cells for the high-res box (sampling ICs) along a principal axis
-#define DIM (int) 768 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define DIM (int) 512 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define DIM (int) 256 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define HII_DIM (int) 768 // number of cells for the low-res box; recommended to be an integer multiple of DIM
-//#define HII_DIM (int) 512 // number of cells for the low-res box; recommended to be an integer multiple of DIM
-//#define HII_DIM (int) 256 // number of cells for the low-res box; recommended to be an integer multiple of DIM
-#define HII_DIM (int) 128 // number of cells for the low-res box; recommended to be an integer multiple of DIM
+// Now takes a random seed from text-file, allowing the initial conditions (and cosmology) to
+// be sampled within 21CMMC
+
+//#define RANDOM_SEED (long) (1) // seed for the random number generator
+
+#define BOX_LEN (float) 75 // in Mpc
+//#define BOX_LEN (float) 300 // in Mpc
+//#define BOX_LEN (float) 600 // in Mpc
+
+#define DIM (int) 150 // number of cells for the high-res box (sampling ICs) along a principal axis
+//#define DIM (int) 600 // number of cells for the high-res box (sampling ICs) along a principal axis
+//#define DIM (int) 1200 // number of cells for the high-res box (sampling ICs) along a principal axis
+
+// to avoid sampling issues, DIM should be at least 3 or 4 times HII_DIM, and an integer multiple)
+#define HII_DIM (int) 50 // number of cells for the low-res box
+//#define HII_DIM (int) 200 // number of cells for the low-res box
+//#define HII_DIM (int) 600 // number of cells for the low-res box
 
 /****** New in v1.1. ****** Threading parameters  ***/
-//#define NUMCORES (int) 24 // # of cores you wish to allocate (shared mem)
-#define NUMCORES (int) 1 // # of cores you wish to allocate (shared mem)
-#define RAM (float) 14 // physical memory in GB available
+#define NUMCORES (int) 1 // # of cores you wish to allocate (must be shared mem)
+#define RAM (float) 16 // physical memory in GB available
 /******** END USER CHANGABLE DEFINITIONS   **********/
 
 #include "ANAL_PARAMS.H"
@@ -55,6 +59,7 @@
 #include "../Cosmo_c_files/misc.c"
 #include "../Cosmo_c_files/cosmo_progs.c"
 #include "../Cosmo_c_files/ps.c"
+#include "../Cosmo_c_files/recombinations.c"
 
 #define MIDDLE (DIM/2)
 #define D (unsigned long long)DIM // the unsigned long long dimension
