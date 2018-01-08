@@ -3,7 +3,7 @@ A parallelised, Monte Carlo Markov Chain analysis tool for simultaneously explor
 the epoch of reionisation (EoR) and the epoch of heating
 
 Latest release: 08/01/2018
-- Updated to include EoH
+- Updated to include spin temperature fluctuations and the heating epoch
 - Added in line-of-sight redshift space distortions
 - Added in support for light-cone generation
 - Allow both astrophysical and cosmological parameters to vary
