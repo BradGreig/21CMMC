@@ -45,6 +45,26 @@ if __name__ == '__main__':
 #	CosmologyToVary = ['SIGMA_8','littleh','OMEGA_M','OMEGA_b','NS']
 	CosmologyToVary = []
 
+    # New in v1.4
+    # Decide whether to use halo mass dependent ionizing efficiency. 
+    # The ionizing efficiency zeta is allowed to scale with the halo mass:
+    # \zeta = N_{\gammaUV} x f_{esc} x f_{\ast}
+    # where:
+    # f_{\ast} = STELLAR_BARYON_FRAC x (M_{halo}/10^10 M_{sol})^STELLAR_BARYON_PL
+    # f_{esc} = ESC_FRAC x (M_{halo}/10^10 M_{sol})^ESC_PL
+    # The number of halos hosting active galaxies (i.e. the duty cycle) is assumed to
+    # exponentially decrease below M_TURNOVER Msun, : fduty \propto e^(- M_TURNOVER / M)
+    # See eq. (?) in Park et al....
+	USE_MASS_DEPENDENT_ZETA = True 
+        
+    # New in v1.4
+    # if 'IncludeLF = 0', do NOT use luminosity functions to constraints.
+	# if 'IncludeLF = 1', USE luminosity functions to constraints.
+	# if 'IncludeLF = 2', USE luminosity functions + Planck prior + (McGreer prior).
+	# NOTE # if set 'IncludeLF = 2', do NOT use PS.
+	# NOTE # even if set 'IncludeLF = 2', the driver file still computes 'ComputeIonisationBoxes' to calculate tau_e.
+	IncludeLF = 1
+
 	# Performs the full evolution (Ts.c) of the IGM during reionisation and heating epoch. Setting to false reverts to saturated spin temperature limit (Ts >> Tcmb).
 	Include_Ts_fluc = True
 
@@ -54,7 +74,7 @@ if __name__ == '__main__':
 	# Decide whether to use light-cone boxes or co-eval boxes
 	# Note that the light-cone can only be generated along the z-direction (21cmFAST could do any arbitrary direction, this only does the z-direction). Should be 
 	# trivial if one wants to add support for light-cones along any direction.
-	IncludeLightCone = False
+	IncludeLightCone = True
 
 	# Use an interpolation table for the full box collapsed fraction for the computation of the IGM spin temperature. 
 	UseFcollTable = False
@@ -97,7 +117,7 @@ if __name__ == '__main__':
 
 
 	# Whether to include line of sight (z-direction only) redshift space distortions (RSDs)
-	INCLUDE_SUBCELL_RSDS = False
+	INCLUDE_SUBCELL_RSDS = True
 	# This is applied along the line of sight (z-direction)
 	# The preamble of drive_21cmMC_streamlined.c contains a few other parameters that are associated with RSDs. Change within drive_21cmMC_streamlined.c
 
@@ -124,13 +144,13 @@ if __name__ == '__main__':
 	# the default TsCalc_z = 6.0 corresponds basically to 200 MHz (in-built (default) Z_HEAT_MAX is z = 35 which corresponds to 40 MHz)	
 
 	# Define whether a fixed error on the 21cm global signal is to be used, or whether to read from file
-	GLOBAL_SIGNAL_FIXED_ERROR = False
+	GLOBAL_SIGNAL_FIXED_ERROR = True
 
 
 	# Setting this to true will keep all relevant statistical data (i.e. tau, xH vs etc., PS vs k at all redshift etc.)
 	# Separating the accepted/rejected points from the MCMC output can be done in post-processing (a separate script is provided to do so "ReadAllData.py"). 
 	# It was a bit too unwieldly to do internally, so I opted for externally dealing with separating the data.
-	KEEP_ALL_DATA = False
+	KEEP_ALL_DATA = True
 
 
 
@@ -151,14 +171,6 @@ if __name__ == '__main__':
 	X_RAY_TVIR_LB = 4.0
 	X_RAY_TVIR_UB = 6.0
 
-	# Setting IncludeAlpha = True, results in the sampling of a mass dependent ionising efficiency.
-	# This mass dependent ionising efficiency is defined as (Mass / M_vir)**(Alpha)
-	# - M_vir is the mass corresponding to the Virial Temperature (T_Vir) evaluated at the respective redshift (T_vir is defined to be redshift independent)
-	# - Alpha is a the power law. Alpha = 0 corresponds to a mass independent ionising efficiency, corresponding to the default 3 parameter reionisation model
-	# IncludeAlpha = True allows for a 4 parameter model to be sampled.
-	# *** NOTE *** As yet there is no support for the 4 parameter model. This needs to be added at some point down the line. I don't know what you will get if
-	# you set this to 'True' at the present time! (I think it works if Include_Ts_fluc is set to false, i.e. only co-eval boxes in the saturated spin temperature limit)
-	IncludeAlpha = False 
 
 	# Reionisation redshifts for the multi-z 21cm Fast "observations"
 	# Need to make sure that these boxes exist in the "Boxes" folder. If not, please generate new boxes
@@ -174,15 +186,21 @@ if __name__ == '__main__':
 	# Note: Adding any additional redshifts adds to the computation time, so this will make the code slower
 	Redshifts_For_Prior = []
 
+
+        # This list allows the user to use the redshift list for luminosity functions.
+        Redshifts_For_LF = []
+
 	# If the light-cone is being directly sampled, it outputs across the full redshift range, so don't need to pass it a redshift. Will populate the list 'Redshift'
 	# with the filenames of the mock observations constructing the light-cone to ensure the correct number of 21cm PS are used for the likelihood
 	### NOTE ### Redshifts added here must always be added in increasing order.
 	if IncludeLightCone is False:
 
-		Redshift = ['6.429094', '7.041489', '7.533692', '8.610322']
+#		Redshift = ['6.429094', '7.041489', '7.533692', '8.610322']
 
 #		Redshift = ['6.429094', '7.202319', '8.237142', '9.402521', '10.714930', '12.456770', '14.457590', '17.111031','20.219959','24.359810']
 #		Redshift = ['6.000594', '7.041489', '8.056021', '8.998578', '10.949220', '13.000420', '15.082080', '17.111023']	
+#		Redshift = ['6.000594', '7.041489', '8.056021', '8.998578', '10.949220', '13.000420']	
+		Redshift = ['5.900000', '7.041489', '8.056021', '8.998578', '10.949220', '13.000420']	
 #		Redshift = ['6.000594', '7.041489', '8.056021', '8.998578']	
 #		Redshift = ['6.000594']
 
@@ -193,7 +211,25 @@ if __name__ == '__main__':
 	# if Include_Ts_fluc = True the redshifts listed above must match with the redshifts sampled by the spin temperature algorithm. If not, then the code will fail.
 	# Generally speaking, the sampling should be fine enough that one redshift will be close enough to the corresponding redshift of interest.
 	# If not, and it is important for accuracy purposes, one can lower ZPRIME_STEP_FACTOR in HEAT_PARAMS.H
-	# Can determine the redshift sampling by running the test instance of the driver (./drive_21cmMC_streamlined 1.000000 1.000000 1 1 0 6.0), using the provided Walker file.
+	# Can determine the redshift sampling by running the test instance of the driver (./drive_21cmMC_streamlined 1.000000 1.000000 1 1 0 6.0 1), using the provided Walker file.
+
+    # New in v1.4
+    # Redshift list to compute Luminosity functions.
+	#if IncludeLF is True:
+	if IncludeLF:
+		# At the moment, this redshift list is not connected to Likelihood21cmFast.py and drive_21cmMC_streamlined.c. Sould be modifed. 
+		Redshifts_For_LF = ['6.000000', '7.000000', '8.000000', '10.000000']
+
+		multi_z_obs_Muv = [[0]*20 for i in range(len(Redshifts_For_LF))]
+		multi_z_obs_phi = [[0]*20 for i in range(len(Redshifts_For_LF))]
+		multi_z_obs_Error_phi = [[0]*20 for i in range(len(Redshifts_For_LF))]
+
+	else:
+		multi_z_obs_Muv = []
+		multi_z_obs_phi = []
+		multi_z_obs_Error_phi = []
+            
+            
 
 
 	################### Enabling the addition of some observational priors ####################################
@@ -293,8 +329,10 @@ if __name__ == '__main__':
 			# between the mock observations and sampled 21cm PS should be the same)
 
 			# For the light-cone version of the code, use a text file containing the 21cm PS from the light-cones.		
-			MockObsFileName = 'LightCone21cmPS_FaintGalaxies_600Mpc_400'
+			MockObsFileName = 'LightCone21cmPS_500Mpc_256'
 		
+			ModelName = 'GalaxyParams'
+
 			# Note here, we are populating the list 'Redshift' with the filenames. The length of this is needed for ensuring the correct number of 21cm PS are used for the likelihood
 			# Re-using the same list filename means less conditions further down this script. The likelihood correctly accounts for it with the 'IncludeLightCone' flag.
 			filename = open('MockObs/%s.txt'%(MockObsFileName), 'r') 
@@ -308,39 +346,52 @@ if __name__ == '__main__':
 				multi_z_mockobs_PS.append(mockobs_PS_values)		
 
 		else:
-
+			if not IncludeLF is 2:
 			### NOTE ###
 			# If Include_Ts_fluc is set, the user must ensure that the co-eval redshift to be sampled (set by the Redshift list above) is to be sampled by the code.			
 
-#			MockObsFileName = 'MockObs_FaintGalaxies_PS_600Mpc'
-			MockObsFileName = 'MockObs_PS_200Mpc_EOS_FaintGalaxies'
-#			MockObsFileName = 'MockObs_BrightGalaxies_PS_600Mpc'
-#			ModelName = 'FaintGalaxies'
-			ModelName = 'EOS_FaintGalaxies'
-#			ModelName = 'BrightGalaxies'
-#			BoxType = 'Co-Eval'
-			BoxType = 'Co-Eval'			
+				MockObsFileName = 'MockObs_PS_200Mpc_EOS_FaintGalaxies'
 
-			for i in range(len(Redshift)):		
-				mockobs_k_values = numpy.loadtxt('MockObs/%s/%s/%s_z%s.txt'%(ModelName,BoxType,MockObsFileName,Redshift[i]), usecols=(0,))
-				mockobs_PS_values = numpy.loadtxt('MockObs/%s/%s/%s_z%s.txt'%(ModelName,BoxType,MockObsFileName,Redshift[i]), usecols=(1,))
+				ModelName = 'EOS_FaintGalaxies'
 
-				multi_z_mockobs_k.append(mockobs_k_values)
-				multi_z_mockobs_PS.append(mockobs_PS_values)
+				BoxType = 'Co-Eval'			
 
-	multi_z_mockobs_k = numpy.array(multi_z_mockobs_k)
-	multi_z_mockobs_PS = numpy.array(multi_z_mockobs_PS)
+				for i in range(len(Redshift)):		
+					mockobs_k_values = numpy.loadtxt('MockObs/%s/%s/%s_z%s.txt'%(ModelName,BoxType,MockObsFileName,Redshift[i]), usecols=(0,))
+					mockobs_PS_values = numpy.loadtxt('MockObs/%s/%s/%s_z%s.txt'%(ModelName,BoxType,MockObsFileName,Redshift[i]), usecols=(1,))
+
+					multi_z_mockobs_k.append(mockobs_k_values)
+					multi_z_mockobs_PS.append(mockobs_PS_values)
+	if not IncludeLF is 2:
+		multi_z_mockobs_k = numpy.array(multi_z_mockobs_k)
+		multi_z_mockobs_PS = numpy.array(multi_z_mockobs_PS)
 
 
+
+	# New in v1.4
+    # Redshift list to compute Luminosity functions.
+	#if IncludeLF is True:
+	if IncludeLF:
+
+		for i in range(len(Redshifts_For_LF)):
+			obs_Muv_values = numpy.loadtxt('MockObs/%s/LFs/LF_obs_Bouwens_%s.txt'%(ModelName,Redshifts_For_LF[i]), usecols=(0,))
+			obs_phi_values = numpy.loadtxt('MockObs/%s/LFs/LF_obs_Bouwens_%s.txt'%(ModelName,Redshifts_For_LF[i]), usecols=(1,))
+			obs_Error_phi_values = numpy.loadtxt('MockObs/%s/LFs/LF_obs_Bouwens_%s.txt'%(ModelName,Redshifts_For_LF[i]), usecols=(2,))
+			for j in range(len(obs_Muv_values)):
+				multi_z_obs_Muv[i][j] = obs_Muv_values[j]
+				multi_z_obs_phi[i][j] = obs_phi_values[j]
+				multi_z_obs_Error_phi[i][j] = obs_Error_phi_values[j]
+
+		multi_z_obs_Muv[i] = numpy.array(multi_z_obs_Muv[i])
+		multi_z_obs_phi[i] = numpy.array(multi_z_obs_phi[i])
+		multi_z_obs_Error_phi[i] = numpy.array(multi_z_obs_Error_phi[i])
 
 	###### Read in the data for the telescope sensitivites ######
 
 
 
 	# Set for the desired telescope ['SKA_halveddipoles_compact', 'HERA331'] corresponding to the file structure in "NoiseData"
-#	Telescope_Name = 'SKA'
-	Telescope_Name = 'HERA331'
-#	Telescope_Name = 'GlobalSignal_ConstantError'
+	Telescope_Name = 'SKA'
 
 	ObsDuration = '1000hr'
 
@@ -395,7 +446,7 @@ if __name__ == '__main__':
 		if IncludeLightCone is True:
 
 			# *** NOTE *** Again, the names of these files should be placed in a text-file in ** increasing ** redshift order
-			MockObsFileName = 'LightCone21cmPS_Error_FaintGalaxies_%s_%s_600Mpc_400'%(Telescope_Name,ObsDuration)
+			MockObsFileName = 'LightCone21cmPS_Error_GalaxyParams_SKA_1000hr_500Mpc_256'
 		
 			filename = open('NoiseData/%s.txt'%(MockObsFileName), 'r') 
 			LightConeErrors = [line.rstrip('\n') for line in filename]
@@ -409,31 +460,27 @@ if __name__ == '__main__':
 				multi_z_Error_PS.append(Error_PS_values)
 
 		else:
+			if not IncludeLF is 2:
+				NoiseFileName = 'TotalError_%s_PS_600Mpc'%(Telescope_Name)
 
-#			NoiseFileName = 'TotalError_%s_PS_600Mpc'%(Telescope_Name)
-			NoiseFileName = 'TotalError_%s_PS_200Mpc'%(Telescope_Name)
+				ModelName = 'EOS_FaintGalaxies'
+				BoxType = 'Co-Eval'
 
-#			ModelName = 'FaintGalaxies'
-			ModelName = 'EOS_FaintGalaxies'
-			BoxType = 'Co-Eval'
+				for i in range(len(Redshift)):
+					Error_k_values = numpy.loadtxt('NoiseData/%s/%s/%s_z%s_%s_%s.txt'%(ModelName,BoxType,NoiseFileName,Redshift[i],ModelName,ObsDuration), usecols=(0,))
+					Error_PS_values = numpy.loadtxt('NoiseData/%s/%s/%s_z%s_%s_%s.txt'%(ModelName,BoxType,NoiseFileName,Redshift[i],ModelName,ObsDuration), usecols=(1,))
 
-			for i in range(len(Redshift)):
-#				Error_k_values = numpy.loadtxt('NoiseData/FaintGalaxies/%s/%s_z%s_%s.txt'%(BoxType,NoiseFileName,Redshift[i],ObsDuration), usecols=(0,))
-#				Error_PS_values = numpy.loadtxt('NoiseData/FaintGalaxies/%s/%s_z%s_%s.txt'%(BoxType,NoiseFileName,Redshift[i],ObsDuration), usecols=(1,))
-				Error_k_values = numpy.loadtxt('NoiseData/%s/%s/%s_z%s_%s_%s.txt'%(ModelName,BoxType,NoiseFileName,Redshift[i],ModelName,ObsDuration), usecols=(0,))
-				Error_PS_values = numpy.loadtxt('NoiseData/%s/%s/%s_z%s_%s_%s.txt'%(ModelName,BoxType,NoiseFileName,Redshift[i],ModelName,ObsDuration), usecols=(1,))
-
-				multi_z_Error_k.append(Error_k_values)
-				multi_z_Error_PS.append(Error_PS_values)
-		
-	multi_z_Error_k = numpy.array(multi_z_Error_k)
-	multi_z_Error_PS = numpy.array(multi_z_Error_PS)	
+					multi_z_Error_k.append(Error_k_values)
+					multi_z_Error_PS.append(Error_PS_values)
+	if not IncludeLF is 2:
+	    multi_z_Error_k = numpy.array(multi_z_Error_k)
+	    multi_z_Error_PS = numpy.array(multi_z_Error_PS)	
 
 	# k-space cut to be made to the likelihood fitting corresponding to the removal of foregrounds
 	# NOTE: Be careful that the choices of "foreground_cut" and "shot_noise_cut" are contained within the ranges of 1) The mock observation PS 2) Error PS and 
 	# 3) the boxes to be sampled by the MCMC. For all, a spline interpolation is performed, therefore it is imperative that you do not define these ranges outside
 	# of the bounds of your data.
-	foreground_cut = 0.15
+	foreground_cut = 0.1
 	shot_noise_cut = 1.0
 	# Number of spline points to be used for the likelihood computation
 	NSplinePoints = 8
@@ -473,29 +520,99 @@ if __name__ == '__main__':
 
 	# Setting up a dictionary of the available parameters to be sampled. Set "True" to allow this parameter to be varied, set "False" if it is to be held fixed
 
-	# Alpha (power-law). Note: Current version does not support a mass-dependent power law ionising efficiency to be used with the spin temperature fluctuations
-	param_legend['ALPHA'] = False	
+        # Set fiducial values for parameters, and its lower and upper bounds. 
+        # Not all will be used, depends on what options are set.
 
-	# Set a fiducial value for the power law index alpha, and its lower and upper bounds. Not all will be used, depends on what options are set.
-	Fiducial_Alpha = 0.0
-	LowerBound_Alpha = -2.0
-	UpperBound_Alpha = 2.0
+        # New in v1.4 : (1) start
+        # The halo mass-dependent ionizing efficiency is defined as
+        # \zeta = N_{\gammaUV} x f_{esc} x f_{\ast}
+        # where:
+        # f_{\ast} = F_STAR10 x (M_{halo}/10^10 M_{sol})^ALPHA_STAR
+        # f_{esc} = F_ESC10 x (M_{halo}/10^10 M_{sol})^ALPHA_ESC
+        # The number of halos hosting active galaxies (i.e. the duty cycle) is assumed to
+        # exponentially decrease below M_TURN Msun, : fduty \propto e^(- M_TURN / M)
 
-	param_string_names.append('ALPHA')
-	param_lower_limits.append(LowerBound_Alpha)
-	param_upper_limits.append(UpperBound_Alpha)
+        # Stellar baryon fraction defined for 10^10 Msun halos
+        param_legend['F_STAR10'] = True   
 
-	# Ionising efficiency, Zeta
-	param_legend['ZETA'] = True
+        Fiducial_Fstar10 = -1.045757491 # logarithmic scale: 0.09
+        LowerBound_Fstar10 = -3
+        UpperBound_Fstar10 = 0 
 
-	# Set a fiducial value for Zeta, and its lower and upper bounds. Not all will be used, depends on what options are set.
-	Fiducial_Zeta = 30.0
-	LowerBound_Zeta = 10.0
-	UpperBound_Zeta = 250.0
+        param_string_names.append('F_STAR10')
+        param_lower_limits.append(LowerBound_Fstar10)
+        param_upper_limits.append(UpperBound_Fstar10)
 
-	param_string_names.append('ZETA')
-	param_lower_limits.append(LowerBound_Zeta)
-	param_upper_limits.append(UpperBound_Zeta)
+        # Power law index with halo mass
+        param_legend['ALPHA_STAR'] = True 
+
+        Fiducial_AlphaStar = 0.5
+        LowerBound_AlphaStar = -0.5
+        UpperBound_AlphaStar = 1. 
+
+        param_string_names.append('ALPHA_STAR')
+        param_lower_limits.append(LowerBound_AlphaStar)
+        param_upper_limits.append(UpperBound_AlphaStar)
+
+        # Escape fraction defined for 10^10 Msun halos
+        param_legend['F_ESC10'] = True
+
+        Fiducial_Fesc10 = -1.301029996 # logarithmic scale: 0.05
+        LowerBound_Fesc10 = -3
+        UpperBound_Fesc10 = 0.
+
+        param_string_names.append('F_ESC10')
+        param_lower_limits.append(LowerBound_Fesc10)
+        param_upper_limits.append(UpperBound_Fesc10)
+
+        # Power law index with halo mass
+        param_legend['ALPHA_ESC'] = True
+
+        Fiducial_AlphaEsc = -0.5
+        LowerBound_AlphaEsc = -1.
+        UpperBound_AlphaEsc = 0.5
+
+        param_string_names.append('ALPHA_ESC')
+        param_lower_limits.append(LowerBound_AlphaEsc)
+        param_upper_limits.append(UpperBound_AlphaEsc)
+
+        # Halo mass threshold for efficient star formation (in Msun)
+        param_legend['M_TURN'] = True
+
+        Fiducial_Mturn = 8.69897     # logarithmic scale: 8 x 10^10
+        LowerBound_Mturn = 8.
+        UpperBound_Mturn = 10.
+
+        param_string_names.append('M_TURN')
+        param_lower_limits.append(LowerBound_Mturn)
+        param_upper_limits.append(UpperBound_Mturn)
+
+        # Star-formation time-scale as a fraction of the Hubble time.
+        # This parameter is a free parameter, 
+        # when 'USE_MASS_DEPENDENT_ZETA' and 'Include_Ts_fluc' are True. (Light cone option?)
+        # Also, will be a free parameter with Luminosity function in the next version.
+        param_legend['t_STAR'] = True
+
+        Fiducial_t_STAR = 0.8
+        LowerBound_t_STAR = 0.01
+        UpperBound_t_STAR = 1.
+
+        param_string_names.append('t_STAR')
+        param_lower_limits.append(LowerBound_t_STAR)
+        param_upper_limits.append(UpperBound_t_STAR)
+        # New in v1.4 : (1) end
+
+        # Constant ionising efficiency, Zeta
+        param_legend['ZETA'] = True
+
+        # Set a fiducial value for Zeta, and its lower and upper bounds. Not all will be used, depends on what options are set.
+        Fiducial_Zeta = 30.0
+        LowerBound_Zeta = 10.0
+        UpperBound_Zeta = 250.0
+
+        param_string_names.append('ZETA')
+        param_lower_limits.append(LowerBound_Zeta)
+        param_upper_limits.append(UpperBound_Zeta)
 
 	# Mean ionising photon horizon, R_mfp
 	param_legend['MFP'] = True
@@ -533,12 +650,30 @@ if __name__ == '__main__':
 	param_lower_limits.append(LowerBound_TVIR)
 	param_upper_limits.append(UpperBound_TVIR)	
 
+        # New in v1.4 : (2) start
+        if USE_MASS_DEPENDENT_ZETA is True:
+        # halo mass dependent ionizing efficiency is set.
+                param_legend['ZETA'] = False # Constant inizing efficiency turned off
+                param_legend['TVIR_MIN'] = False # The minimum halo mass hosting sources is defined by M_TURN, M_MIN = M_TURN/10.
+                param_legend['MFP'] = False # Mean free path turned off
+        else:
+                param_legend['F_STAR10'] = False
+                param_legend['ALPHA_STAR'] = False
+                param_legend['F_ESC10'] = False
+                param_legend['ALPHA_ESC'] = False
+                param_legend['M_TURN'] = False
+                #param_legend['t_STAR'] = False
+
+        if USE_MASS_DEPENDENT_ZETA is True and Include_Ts_fluc is False and IncludeLF is 0:
+                param_legend['t_STAR'] = False
+        # New in v1.4 : (2) end
+
 	# Soft band X-ray luminosity, L_X. Used for determining the number of X-ray photons produced per stellar baryon
 	param_legend['L_X'] = True
 
 	# Set a fiducial value for L_X, and its lower and upper bounds. Not all will be used, depends on what options are set.
 	# Defined as log10(L_X). E.g. 40 = log10(10^40)
-	Fiducial_LX = 40.0
+	Fiducial_LX = 40.5
 	LowerBound_LX = 38.0
 	UpperBound_LX = 42.0
 
@@ -560,7 +695,7 @@ if __name__ == '__main__':
 	param_upper_limits.append(UpperBound_NU_X_THRESH)	
 
 	# X-Ray spectral index at frequencies higher than NU_X_THRESH
-	param_legend['X_RAY_SPEC_INDEX'] = True
+	param_legend['X_RAY_SPEC_INDEX'] = False#True
 
 	# Set a fiducial value for X_RAY_SPEC_INDEX, and its lower and upper bounds. Not all will be used, depends on what options are set.
 	Fiducial_X_RAY_SPEC_INDEX = 1.0
@@ -572,7 +707,7 @@ if __name__ == '__main__':
 	param_upper_limits.append(UpperBound_X_RAY_SPEC_INDEX)	
 
 	############### Condition: If Include_Ts_fluc = False, then X-ray heating parameters cannot be varied.  ###############
-	############### Overwrite any param_legend values for the X-ray parameters to False 					###############
+	############### Overwrite any param_legend values for the X-ray parameters to False 			###############
 
 	if Include_Ts_fluc is False:
 			param_legend['L_X'] = False
@@ -588,7 +723,7 @@ if __name__ == '__main__':
 	# Set up ranges and values for any of the cosmological values to be varied
 
 	# Sigma 8 (normalisation of the 21cm PS)
-	Fiducial_Sigma8 = 0.820000
+	Fiducial_Sigma8 = 0.810000
 	
 	LowerBound_SIGMA_8 = 0.7
 	UpperBound_SIGMA_8 = 0.95
@@ -664,9 +799,9 @@ if __name__ == '__main__':
 	# Some other parameters (which in future can be varied)
 
 	# Star-formation time-scale as a fraction of the Hubble time
-	Fiducial_t_STAR = 0.5
+	#Fiducial_t_STAR = 0.5
 	# The fraction of baryons converted to stars
-	Fiducial_F_STAR = 0.05
+	#Fiducial_F_STAR = 0.05
 
 
 
@@ -678,7 +813,16 @@ if __name__ == '__main__':
 	Fiducial_Params = dict()
 
 	# All these parameters are passed to a text-file for which the 21CMMC driver can read in and use these parameters to perform any computation.
-	Fiducial_Params['ALPHA'] = Fiducial_Alpha
+
+	# New in v1.4 : (3) start
+	Fiducial_Params['F_STAR10'] = Fiducial_Fstar10
+	Fiducial_Params['ALPHA_STAR'] = Fiducial_AlphaStar
+	Fiducial_Params['F_ESC10'] = Fiducial_Fesc10
+	Fiducial_Params['ALPHA_ESC'] = Fiducial_AlphaEsc
+	Fiducial_Params['M_TURN'] = Fiducial_Mturn
+	Fiducial_Params['t_STAR'] = Fiducial_t_STAR
+	# New in v1.4 : (3) end
+
 	Fiducial_Params['ZETA'] = Fiducial_Zeta
 	Fiducial_Params['MFP'] = Fiducial_MFP
 	Fiducial_Params['TVIR_MIN'] = Fiducial_TVIR
@@ -692,8 +836,8 @@ if __name__ == '__main__':
 	Fiducial_Params['X_RAY_TVIR_LB'] = X_RAY_TVIR_LB
 	Fiducial_Params['X_RAY_TVIR_UB'] = X_RAY_TVIR_UB
 
-	Fiducial_Params['t_STAR'] = Fiducial_t_STAR
-	Fiducial_Params['F_STAR'] = Fiducial_F_STAR
+	#Fiducial_Params['t_STAR'] = Fiducial_t_STAR
+	#Fiducial_Params['F_STAR'] = Fiducial_F_STAR
 
 	Fiducial_Params['N_RSD_SUBCELLS'] = N_RSD_SUBCELLS
 	Fiducial_Params['LOS_direction'] = LOS_direction	
@@ -735,7 +879,7 @@ if __name__ == '__main__':
 	FlagOptions['CALC_TS_FLUC'] = Include_Ts_fluc
 	FlagOptions['KEEP_GLOBAL_DATA'] = USE_GLOBAL_SIGNAL
 	FlagOptions['USE_IONISATION_FCOLL_TABLE'] = USE_IONISATION_FCOLL_TABLE
-	FlagOptions['INCLUDE_POWERLAW'] = IncludeAlpha
+	FlagOptions['USE_MASS_DEPENDENT_ZETA'] = USE_MASS_DEPENDENT_ZETA
 	FlagOptions['USE_GS_FIXED_ERROR'] = GLOBAL_SIGNAL_FIXED_ERROR
 	
 	FlagOptions['KEEP_ALL_DATA'] = KEEP_ALL_DATA
@@ -755,6 +899,9 @@ if __name__ == '__main__':
 		os.system(command)
 		command = "mkdir %s/WalkerData"%(Create_Output_Directory)
 		os.system(command)
+        if IncludeLF:
+		    command = "mkdir %s/LFData"%(Create_Output_Directory)
+		    os.system(command)
 
 	FlagOptions['KEEP_ALL_DATA_FILENAME'] = Create_Output_Directory
 
@@ -798,10 +945,6 @@ if __name__ == '__main__':
 	if USE_INHOMO_RECO is True and Include_Ts_fluc is False:
 		ErrorString.append("ERROR: Inhomogeneous recombinations can only be used in combination with the full computation of the IGM spin temperature")
 		ErrorString.append("This differs from 21cmFAST, but arises as no intermediate information is stored")
-		ErrorMessage = True
-
-	if Include_Ts_fluc is True and param_legend['ALPHA'] is True:
-		ErrorString.append("ERROR: Current version does not support a mass-dependent ionising efficiency to be used with the full spin temperature fluctuations.")
 		ErrorMessage = True
 
 	if (len(Redshift) + len(Redshifts_For_Prior)) < 3:
@@ -856,16 +999,16 @@ if __name__ == '__main__':
 
 	chain = LikelihoodComputationChain()
 	
-	Likelihoodmodel21cmFast = Likelihood21cmFast_multiz(multi_z_mockobs_k,multi_z_mockobs_PS,multi_z_Error_k,multi_z_Error_PS,
-			Redshift,Redshifts_For_Prior,param_legend,Fiducial_Params,FlagOptions,param_string_names,NSplinePoints,TsCalc_z,foreground_cut,shot_noise_cut,IncludeLightCone,
+	Likelihoodmodel21cmFast = Likelihood21cmFast_multiz(Redshifts_For_LF,multi_z_obs_Muv,multi_z_obs_phi,multi_z_obs_Error_phi,multi_z_mockobs_k,multi_z_mockobs_PS,multi_z_Error_k,multi_z_Error_PS,
+			Redshift,Redshifts_For_Prior,param_legend,Fiducial_Params,FlagOptions,param_string_names,NSplinePoints,TsCalc_z,foreground_cut,shot_noise_cut,IncludeLightCone,IncludeLF,
 			ModUncert,PriorLegend,NFVals_QSODamping,PDFVals_QSODamping)	
 
 	chain.addLikelihoodModule(Likelihoodmodel21cmFast)
 
 	chain.setup()
 
-	File_String = 'ReionModel_21cmFast_%s_%s'%(Telescope_Name,multiz_flag)
-	
+	File_String = 'ReionModel_LF_taue_%s_%s'%(Telescope_Name,multiz_flag)
+
 	sampler = CosmoHammerSampler(
                     params = params,
                     likelihoodComputationChain=chain,
@@ -876,34 +1019,12 @@ if __name__ == '__main__':
                     LowerBound_XRAY=X_RAY_TVIR_LB,
                     UpperBound_XRAY=X_RAY_TVIR_UB,
                     SpinTz=TsCalc_z,
-                    burninIterations=0,
+                    burninIterations=1,
                     sampleIterations=1,
                     filethin = 1,
-                    threadCount=4,
+                    threadCount=8,
 	                reuseBurnin=False
 	           	)
-
-	"""
-	sampler = CosmoHammerSampler(
-                    params = params,
-                    likelihoodComputationChain=chain,
-                    filePrefix="%s"%(File_String),
-                    walkersRatio=72,
-                    CreateFFTData=StoreFFTData,
-                    CreateFCollData=CreateFcollTable,
-                    LowerBound_XRAY=X_RAY_TVIR_LB,
-                    UpperBound_XRAY=X_RAY_TVIR_UB,
-                    SpinTz=TsCalc_z,
-                    ThreadsForTable=FcollTableThreads,
-                    burninIterations=50,
-                    sampleIterations=350,
-                    filethin = 1,
-                    threadCount=216,
-	                reuseBurnin=False
-	           	)
-	
-	"""
-
 
 
 	if ErrorMessage is True:
@@ -915,3 +1036,4 @@ if __name__ == '__main__':
 		print 'Start sampling'
 		sampler.startSampling()            
 			
+

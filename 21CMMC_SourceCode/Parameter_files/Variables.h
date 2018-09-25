@@ -7,7 +7,7 @@
 /* The minimum file length containing the relevant astrophysical parameters, plus related information requisite for computing the 21cm signal. This number should remain fixed,
  unless additional parameters are to be added and suitably varied. This number ** does not ** include the redshift sampling (i.e. if the co-eval box option is set. That comes
  through at the command line, where number of redshifts is provided.   */
-#define TOTAL_AVAILABLE_PARAMS (int) (16)
+#define TOTAL_AVAILABLE_PARAMS (int) (19)
 
 /* A text file containing the cosmological parameters that can be varied within 21CMMC. This number is fixed, and includes the standard 6 parameter Lambda-CDM cosmological parameters,
  and also a random initial seed for generating the initial conditions (if this option is set). Note that OMEGA_L is assumed to be 1 - OMEGA_M, therefore it is unnecessary to vary OMEGA_L */
@@ -33,7 +33,10 @@
  the 1.5 Mpc voxels used in my work. This should not need to be changed */
 #define LC_BOX_PADDING_IN_MPC (float)12
 
+/* The number of bins for arrays to compute luminosity functions (New in v1.4) */
+#define NBINS_LF (int)100
 
+#define NUM_OF_REDSHIFT_FOR_LF (int)4
 // Declaration of various required variables
 
 
@@ -43,16 +46,28 @@ fftwf_complex *HIRES_box, *HIRES_box_saved;
 
 float *LOWRES_density, *LOWRES_vx, *LOWRES_vy, *LOWRES_vz, *LOWRES_vx_2LPT, *LOWRES_vy_2LPT, *LOWRES_vz_2LPT, *LOWRES_density_REDSHIFT, *LOWRES_velocity_REDSHIFT, *HIRES_density;
 
-float *xH, *deltax, *Fcoll, *delta_T, *v, *vel_gradient, *zpp_growth, *inverse_diff, *Tk_box, *x_e_box, *Ts;
+float *xH, *deltax, *Fcoll, *delta_T, *v, *vel_gradient, *zpp_growth, *inverse_diff, *Tk_box, *x_e_box, *Ts, *SFR_timescale_factor;
 //float *delNL0_bw,*zpp_for_evolve_list,*R_values,*delNL0_Offset,*delNL0_LL,*delNL0_UL,*SingleVal_float,*delNL0_ibw,*log10delNL0_diff,*log10delNL0_diff_UL;
 float *zpp_for_evolve_list,*R_values,*SingleVal_float;
 float *delNL0_bw,*delNL0_Offset,*delNL0_LL,*delNL0_UL,*delNL0_ibw,*log10delNL0_diff,*log10delNL0_diff_UL;
+
+float *SFR_for_integrals_Rct;
+
+double *dxheat_dt_box, *dxion_source_dt_box, *dxlya_dt_box, *dstarlya_dt_box;
+
+float determine_zpp_max, determine_zpp_min, zpp_bin_width;
 
 float *box_z1, *box_z2, *box_interpolate, *box_interpolate_remainder;
 double *redshifts_LC,*slice_redshifts;
 int *start_index_LC, *end_index_LC,*full_index_LC;
 
 float *x_pos_offset, *x_pos, *delta_T_RSD_LOS;
+
+float *growth_interp_table, *inverse_val_box;
+
+int *m_xHII_low_box;
+
+float MinMass, mass_bin_width, inv_mass_bin_width;
 
 double *p_box, *k_ave, *fcoll_R_array, *Sigma_Tmin_grid, *ST_over_PS_arg_grid, *dstarlya_dt_prefactor, *zpp_edge, *sigma_atR, *sigma_Tmin, *ST_over_PS, *sum_lyn, *ERFC_VALS, *ERFC_VALS_DIFF;
 double *aveTb, *aveNF, *redshifts;
@@ -62,6 +77,10 @@ unsigned long long *in_bin_ct;
 double ***fcoll_R_grid, ***dfcoll_dz_grid;
 
 double **density_gridpoints,**grid_dens, **freq_int_heat_tbl,**freq_int_ion_tbl,**freq_int_lya_tbl,**freq_int_heat_tbl_diff,**freq_int_ion_tbl_diff,**freq_int_lya_tbl_diff;
+double **freq_int_heat_tbl_rev,**freq_int_ion_tbl_rev,**freq_int_lya_tbl_rev,**freq_int_heat_tbl_diff_rev,**freq_int_ion_tbl_diff_rev,**freq_int_lya_tbl_diff_rev;
+
+float **freq_int_heat_tbl_float,**freq_int_ion_tbl_float,**freq_int_lya_tbl_float,**freq_int_heat_tbl_diff_float,**freq_int_ion_tbl_diff_float,**freq_int_lya_tbl_diff_float;
+
 
 //float **fcoll_interp1, **fcoll_interp2, **dfcoll_interp1, **dfcoll_interp2, **Ts_z, **x_e_z, **delNL0_rev, **delNL0;
 float *Ts_z, *x_e_z;
@@ -72,7 +91,7 @@ double *Ionisation_fcoll_table, *Ionisation_fcoll_table_final;
 
 short **dens_grid_int_vals, *SingleVal_int;
 
-int NUM_BINS, CREATE_FFT_DATA_FROM_FILE,READ_FFT_DATA_FROM_FILE,SHORTEN_FCOLL,N_USER_REDSHIFT, WALKER_FILE_LENGTH, USE_LIGHTCONE,CALC_PS,USE_TS_FLUCT,INHOMO_RECO,STORE_DATA,ERFC_NUM_POINTS, erfc_arg_val_index;
+int NUM_BINS, CREATE_FFT_DATA_FROM_FILE,READ_FFT_DATA_FROM_FILE,SHORTEN_FCOLL,N_USER_REDSHIFT, WALKER_FILE_LENGTH, USE_LIGHTCONE,CALC_PS, USE_MASS_DEPENDENT_ZETA, USE_LF, USE_TS_FLUCT,INHOMO_RECO,STORE_DATA,ERFC_NUM_POINTS, erfc_arg_val_index;
 
 float R_MFP_MIN, R_MFP_BINWIDTH, TVIR_BINWIDTH, PL_BINWIDTH, R_MFP_VAL_1, R_MFP_VAL_2, TVIR_VAL_1, TVIR_VAL_2, ZETA_PL_VAL_1, ZETA_PL_VAL_2;
 int R_MFP_INT_1, R_MFP_INT_2, TVIR_INT_1, TVIR_INT_2, ZETA_PL_INT_1, ZETA_PL_INT_2;
@@ -88,11 +107,34 @@ float start_z, end_z;
 float k_floor, k_ceil, k_max, k_first_bin_ceil, k_factor;
 double INDIVIDUAL_ID, INDIVIDUAL_ID_2;
 
-double EFF_FACTOR_PL_INDEX, HII_EFF_FACTOR, R_BUBBLE_MAX, ION_Tvir_MIN, L_X, NU_X_THRESH, X_RAY_SPEC_INDEX, X_RAY_Tvir_MIN, NU_X_BAND_MAX, NU_X_MAX;
+double EFF_FACTOR_PL_INDEX, HII_EFF_FACTOR, ION_EFF_FACTOR, R_BUBBLE_MAX, ION_Tvir_MIN, L_X, NU_X_THRESH, X_RAY_SPEC_INDEX, X_RAY_Tvir_MIN, NU_X_BAND_MAX, NU_X_MAX;
 double BinWidth_pH,inv_BinWidth_pH,BinWidth_elec,inv_BinWidth_elec,BinWidth_10,inv_BinWidth_10, erfc_arg_min, erfc_arg_max, erfc_arg_val, ArgBinWidth, InvArgBinWidth;
 double X_RAY_Tvir_LOWERBOUND, X_RAY_Tvir_UPPERBOUND,LOG10_X_RAY_Tvir_LOWERBOUND, LOG10_X_RAY_Tvir_UPPERBOUND, INCLUDE_ZETA_PL;
+// New in v1.4
+//static int Nsteps_zp;
+float growth_zpp;
+float *zpp_interp_table;
+double F_STAR10, ALPHA_STAR, F_ESC10, ALPHA_ESC, M_TURN, M_MIN;
 
-double F_STAR;
+//double *log10_overdense_low_table, *log10_Fcollz_SFR_low_table;
+//float *Overdense_high_table, *Fcollz_SFR_high_table, *zpp_table;
+float *zpp_table;
+double *log10_overdense_spline_SFR;
+float *log10_Fcoll_spline_SFR;
+float *Overdense_spline_SFR, *Fcoll_spline_SFR;
+float **fcoll_Xray_SFR_array, *fcoll_SFR_array;
+double *lnMhalo_param, *Muv_param, *Mhalo_param, *log10phi;
+gsl_interp_accel *LF_spline_acc;
+gsl_spline *LF_spline;
+float *z_LF;
+
+float *overdense_Xray_low_table;
+float *log10_overdense_Xray_low_table, ***log10_Fcollz_SFR_Xray_low_table;
+float *Overdense_Xray_high_table, ***Fcollz_SFR_Xray_high_table;
+
+
+
+//double F_STAR;
 float t_STAR;
 
 unsigned long long RANDOM_SEED;

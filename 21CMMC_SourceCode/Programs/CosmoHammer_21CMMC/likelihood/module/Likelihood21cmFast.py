@@ -22,8 +22,12 @@ QSO_Redshift = 7.0842
 
 class Likelihood21cmFast_multiz(object):
     
-    def __init__(self, k_values, PS_values, Error_k_values, PS_Error, Redshift, Redshifts_For_Prior, param_legend, Fiducial_Params, FlagOptions, param_string_names, NSplinePoints, 
-                        TsCalc_z, Foreground_cut, Shot_Noise_cut, IncludeLightCone, ModUncert, PriorLegend, NFValsQSO, PDFValsQSO):
+    def __init__(self, Redshifts_For_LF,Muv_values, phi_values, phi_Error, k_values, PS_values, Error_k_values, PS_Error, Redshift, Redshifts_For_Prior, param_legend, Fiducial_Params, FlagOptions, param_string_names, NSplinePoints, 
+                        TsCalc_z, Foreground_cut, Shot_Noise_cut, IncludeLightCone, IncludeLF, ModUncert, PriorLegend, NFValsQSO, PDFValsQSO):
+        self.Redshifts_For_LF = Redshifts_For_LF # New in v1.4
+        self.Muv_values = Muv_values   # New in v1.4
+        self.phi_values = phi_values   # New in v1.4
+        self.phi_Error = phi_Error     # New in v1.4
         self.k_values = k_values
         self.PS_values = PS_values
         self.Error_k_values = Error_k_values
@@ -39,6 +43,7 @@ class Likelihood21cmFast_multiz(object):
         self.Foreground_cut = Foreground_cut
         self.Shot_Noise_cut = Shot_Noise_cut
         self.IncludeLightCone = IncludeLightCone
+        self.IncludeLF = IncludeLF
         self.ModUncert = ModUncert
         self.PriorLegend = PriorLegend
         self.NFValsQSO = NFValsQSO
@@ -114,13 +119,25 @@ class Likelihood21cmFast_multiz(object):
             seq.append("%s"%(number_redshifts))
         # Add light cone flag
         seq.append("%s"%(LightConeFlag))
-        # If power-law dependence on ionising efficiency is allowed. Add the flag here (support not yet included)
-        if self.FlagOptions['INCLUDE_POWERLAW'] is True:
+        
+	# If mass-dependence on ionising efficiency is allowed. Add the flag here
+        if self.FlagOptions['USE_MASS_DEPENDENT_ZETA'] is True:
             seq.append("1")
         else:
             seq.append("0")
         # Add redshift for Ts.c calculation
         seq.append("%s"%(self.TsCalc_z))
+
+        #StringArgument = string.join(seq,separator)
+        #print 'StringArgument:',StringArgument
+        
+        #if self.IncludeLF is True:
+        if self.IncludeLF is 1:
+            seq.append("1")
+        elif self.IncludeLF is 2:
+		    seq.append("2")
+        else:
+            seq.append("0")
 
         StringArgument = string.join(seq,separator)
 
@@ -171,11 +188,42 @@ class Likelihood21cmFast_multiz(object):
         create_file = open("Walker_%s.txt"%(StringArgument_other),"w")
         create_file.write("FLAGS    %s    %s    %s    %s    %s    %s    %s\n"%(GenerateNewICs,Subcell_RSDs,IONISATION_FCOLL_TABLE,UseFcollTable,PerformTsCalc,INHOMO_RECO,OutputGlobalAve))
         
-        if self.param_legend['ALPHA'] is True:            
-            create_file.write("ALPHA    %s\n"%(Decimal(repr(params[parameter_number])).quantize(SIXPLACES)))
+        # New in v1.4
+        if self.param_legend['F_STAR10'] is True:    
+            create_file.write("F_STAR10    %s\n"%(Decimal(repr(params[parameter_number])).quantize(SIXPLACES)))
             parameter_number += 1
         else:
-            create_file.write("ALPHA    %s\n"%(self.Fiducial_Params['ALPHA']))
+            create_file.write("F_STAR10    %s\n"%(self.Fiducial_Params['F_STAR10']))
+
+        if self.param_legend['ALPHA_STAR'] is True:    
+            create_file.write("ALPHA_STAR    %s\n"%(Decimal(repr(params[parameter_number])).quantize(SIXPLACES)))
+            parameter_number += 1
+        else:
+            create_file.write("ALPHA_STAR    %s\n"%(self.Fiducial_Params['ALPHA_STAR']))
+
+        if self.param_legend['F_ESC10'] is True:    
+            create_file.write("F_ESC10    %s\n"%(Decimal(repr(params[parameter_number])).quantize(SIXPLACES)))
+            parameter_number += 1
+        else:
+            create_file.write("F_ESC10    %s\n"%(self.Fiducial_Params['F_ESC10']))
+
+        if self.param_legend['ALPHA_ESC'] is True:    
+            create_file.write("ALPHA_ESC    %s\n"%(Decimal(repr(params[parameter_number])).quantize(SIXPLACES)))
+            parameter_number += 1
+        else:
+            create_file.write("ALPHA_ESC    %s\n"%(self.Fiducial_Params['ALPHA_ESC']))
+
+        if self.param_legend['M_TURN'] is True:    
+            create_file.write("M_TURN    %s\n"%(Decimal(repr(params[parameter_number])).quantize(SIXPLACES)))
+            parameter_number += 1
+        else:
+            create_file.write("M_TURN    %s\n"%(self.Fiducial_Params['M_TURN']))
+
+        if self.param_legend['t_STAR'] is True:    
+            create_file.write("t_STAR    %s\n"%(Decimal(repr(params[parameter_number])).quantize(SIXPLACES)))
+            parameter_number += 1
+        else:
+            create_file.write("t_STAR    %s\n"%(self.Fiducial_Params['t_STAR']))
 
         if self.param_legend['ZETA'] is True:
             create_file.write("ZETA    %s\n"%(Decimal(repr(params[parameter_number])).quantize(SIXPLACES)))
@@ -225,8 +273,7 @@ class Likelihood21cmFast_multiz(object):
         create_file.write("X_RAY_TVIR_LB    %s\n"%(self.Fiducial_Params['X_RAY_TVIR_LB']))
         create_file.write("X_RAY_TVIR_UB    %s\n"%(self.Fiducial_Params['X_RAY_TVIR_UB']))
 
-        create_file.write("F_STAR    %s\n"%(self.Fiducial_Params['F_STAR']))
-        create_file.write("t_STAR    %s\n"%(self.Fiducial_Params['t_STAR']))
+        #create_file.write("F_STAR    %s\n"%(self.Fiducial_Params['F_STAR']))
 
         create_file.write("N_RSD_STEPS    %s\n"%(self.Fiducial_Params['N_RSD_SUBCELLS']))
         create_file.write("LOS_direction    %s\n"%(self.Fiducial_Params['LOS_direction']))
@@ -306,7 +353,7 @@ class Likelihood21cmFast_multiz(object):
         os.system(command)
 
         total_sum = 0
-        
+
         if self.FlagOptions['KEEP_GLOBAL_DATA'] is True:
 
             k_values_estimate = np.loadtxt('AveData_%s.txt'%(StringArgument_other), usecols=(0,))
@@ -363,6 +410,55 @@ class Likelihood21cmFast_multiz(object):
                         
                         total_sum += np.square( (MockPS_val - ModelPS_val)/self.PS_Error[0][j] ) 
 
+            # New in v1.4
+            #if self.IncludeLF is True:
+            if self.IncludeLF:
+                # At the moment I just put the redshift list by hand, but this part should be modified.
+                #NUM_OF_REDSHIFTS_FOR_LF = 4
+                for iz in range(len(self.Redshifts_For_LF)):
+                    # Exclude bright-end (Muv < -20) from Lumnosity function 
+                    Muv_i = []
+                    phi_i = []
+                    error_i = []
+                    j = 0 
+                    while j < len(self.Muv_values[iz]):
+                        if self.Muv_values[iz][j] > -20. and self.Muv_values[iz][j]!=0.:
+                            Muv_i.append(self.Muv_values[iz][j])
+                            phi_i.append(self.phi_values[iz][j])
+                            error_i.append(self.phi_Error[iz][j])
+                        j = j + 1  
+
+                    Muv_values_estimate0 = np.loadtxt('LF_estimate_%s_%s.txt'%(StringArgument_other,self.Redshifts_For_LF[iz]), usecols=(0,))
+                    log10phi_values_estimate0 = np.loadtxt('LF_estimate_%s_%s.txt'%(StringArgument_other,self.Redshifts_For_LF[iz]), usecols=(1,))
+                    Muv_values_estimate = Muv_values_estimate0[::-1]
+                    log10phi_values_estimate = log10phi_values_estimate0[::-1]
+
+                    LF_criterion = 1 #LF_criteion == 0: skip this chain.
+                    # check whether Muv does not increase monotonically with halo mass. if not interpolation is not possible.
+                    i_check = 0
+                    while i_check < len(Muv_values_estimate)-1:
+                        if (Muv_values_estimate[i_check] > Muv_values_estimate[i_check+1]):
+                            LF_criterion = 0
+                            #print ("Found Muv list reversed\n")
+                            break
+                        i_check = i_check + 1
+
+                    if (max(Muv_values_estimate) <= min(self.Muv_values[iz])) or (min(Muv_values_estimate) >= max(self.Muv_values[iz])):
+                        LF_criterion = 0
+                
+                    if (LF_criterion == 0):
+                        total_sum = total_sum + 10000000000.
+                    else:
+                        LFestimate_Spline = interpolate.splrep(Muv_values_estimate, log10phi_values_estimate,s=0)
+                        for ii in range(len(Muv_i)):
+                            Muv_i_val = Muv_i[ii]
+                            log10phi_i_val = interpolate.splev(Muv_i_val,LFestimate_Spline,der=0)
+                            #total_sum = total_sum + np.square(phi_i[ii] - 10**(log10phi_i_val)) / (np.square(error_i[ii]))
+                            chi2_i = np.square(phi_i[ii] - 10**(log10phi_i_val)) / (np.square(error_i[ii]))
+                            if (np.isinf(chi2_i)):
+                                chi2_i = 100000.
+                            total_sum = total_sum + chi2_i
+
         else:
 
             if self.IncludeLightCone is True:
@@ -373,6 +469,9 @@ class Likelihood21cmFast_multiz(object):
                 LightconePSFilename = 'delTps_lightcone_filenames_%s.txt'%(StringArgument_other)
                 filename = open('%s'%(LightconePSFilename), 'r') 
                 LightconePS = [line.rstrip('\n') for line in filename]
+
+                #nf_vals[0] = 'Walker_%s.txt'%(StringArgument_other)
+                nf_vals[0] = 0.#'Walker_%s.txt'%(StringArgument_other)
 
             else:
 
@@ -388,19 +487,20 @@ class Likelihood21cmFast_multiz(object):
                     if self.IncludeLightCone is True:
                         k_values_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(0,)) 
                         PS_values_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(1,))
-                    else:
+                    elif not self.IncludeLF is 2:
                         k_values_estimate = np.loadtxt('delTps_estimate_%s_%s.txt'%(StringArgument_other,AllRedshifts[i]), usecols=(0,))
                         PS_values_estimate = np.loadtxt('delTps_estimate_%s_%s.txt'%(StringArgument_other,AllRedshifts[i]), usecols=(1,))
 
                     if self.FlagOptions['KEEP_ALL_DATA'] is True:
+                        if not self.IncludeLF is 2:
+                            if i == 0:
+                                StoredStatisticalData.append(k_values_estimate)
+                                StoredFileLayout.append("{%i}"%(i))
 
-                        if i == 0:
-                            StoredStatisticalData.append(k_values_estimate)
-                            StoredFileLayout.append("{%i}"%(i))
+                            StoredStatisticalData.append(PS_values_estimate)
+                            StoredFileLayout.append("{%i}"%(i+1))
 
-                        StoredStatisticalData.append(PS_values_estimate)
-                        StoredFileLayout.append("{%i}"%(i+1))
-
+#                nf_vals[len(AllRedshifts)] = 'Walker_%s.txt'%(StringArgument_other)
             nf_vals[len(AllRedshifts)] = '%s'%(Individual_ID)
             nf_vals[len(AllRedshifts)+1] = '%s'%(Individual_ID_2)
 
@@ -409,40 +509,98 @@ class Likelihood21cmFast_multiz(object):
                 if self.IncludeLightCone is True:
                     k_values_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(0,)) 
                     PS_values_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(1,))
-                else:
+                    Poisson_error_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(2,)) # Read possion errors
+                elif not self.IncludeLF is 2:
                     # Read in the neutral fraction and 21cm PS for this parameter set and redshift
                     k_values_estimate = np.loadtxt('delTps_estimate_%s_%s.txt'%(StringArgument_other,self.Redshift[i]), usecols=(0,))
                     PS_values_estimate = np.loadtxt('delTps_estimate_%s_%s.txt'%(StringArgument_other,self.Redshift[i]), usecols=(1,))
+                    Poisson_error_estimate = np.loadtxt('delTps_estimate_%s_%s.txt'%(StringArgument_other,self.Redshift[i]), usecols=(2,))
 
+                if not self.IncludeLF is 2:
+                    splined_mock = interpolate.splrep(self.k_values[i],np.log10(self.PS_values[i]),s=0)
+                    splined_error = interpolate.splrep(self.Error_k_values[i],np.log10(self.PS_Error[i]),s=0)
 
-                splined_mock = interpolate.splrep(self.k_values[i],np.log10(self.PS_values[i]),s=0)
-                splined_error = interpolate.splrep(self.Error_k_values[i],np.log10(self.PS_Error[i]),s=0)
+                    splined_model = interpolate.splrep(k_values_estimate,np.log10(PS_values_estimate),s=0)
+                    splined_model_poisson_err = interpolate.splrep(k_values_estimate,np.log10(Poisson_error_estimate),s=0)
 
-                splined_model = interpolate.splrep(k_values_estimate,np.log10(PS_values_estimate),s=0)
+                    # Interpolating the mock and error PS in log space
+                    for j in range(self.NSplinePoints):
 
-                # Interpolating the mock and error PS in log space
-                for j in range(self.NSplinePoints):
+                        MockPS_val = 10**(interpolate.splev(kSpline[j],splined_mock,der=0))
+                        ErrorPS_val = 10**(interpolate.splev(kSpline[j],splined_error,der=0))
 
-                    MockPS_val = 10**(interpolate.splev(kSpline[j],splined_mock,der=0))
-                    ErrorPS_val = 10**(interpolate.splev(kSpline[j],splined_error,der=0))
+                        ModelPS_val = 10**(interpolate.splev(kSpline[j],splined_model,der=0))
+                        ModelPE_val = 10**(interpolate.splev(kSpline[j],splined_model_poisson_err,der=0))
 
-                    ModelPS_val = 10**(interpolate.splev(kSpline[j],splined_model,der=0))
+                        # Check if there are any nan values for the 21cm PS
+                        # A nan value implies a IGM neutral fraction of zero, that is, reionisation has completed and thus no 21cm signal
+                        # Set the value of the 21cm PS to zero. Which results in the largest available difference (i.e. if you expect a signal
+                        # (i.e. non zero mock 21cm PS) but have no signal from the sampled model, then want a large difference for the 
+                        # chi-squared likelihood).
+                        if np.isnan(ModelPS_val) == True:
+                            ModelPS_val = 0.0
 
-                    # Check if there are any nan values for the 21cm PS
-                    # A nan value implies a IGM neutral fraction of zero, that is, reionisation has completed and thus no 21cm signal
-                    # Set the value of the 21cm PS to zero. Which results in the largest available difference (i.e. if you expect a signal
-                    # (i.e. non zero mock 21cm PS) but have no signal from the sampled model, then want a large difference for the 
-                    # chi-squared likelihood).
-                    if np.isnan(ModelPS_val) == True:
-                        ModelPS_val = 0.0
+                        if np.isnan(ModelPE_val) == True:
+                            ModelPE_val = 0.0
 
-                    if np.isnan(MockPS_val) == True:
-                        MockPS_val = 0.0
+                        if np.isnan(MockPS_val) == True:
+                            MockPS_val = 0.0
+                    
 
-                    total_sum += np.square((MockPS_val - ModelPS_val)/(np.sqrt(ErrorPS_val**2. + (self.ModUncert*ModelPS_val)**2.)))                 
+                        #total_sum += np.square((MockPS_val - ModelPS_val)/(np.sqrt(ErrorPS_val**2. + (self.ModUncert*ModelPS_val)**2.)))                 
+                        total_sum += np.square((MockPS_val - ModelPS_val)/(np.sqrt(ErrorPS_val**2. + (self.ModUncert*ModelPS_val)**2. + ModelPE_val**2)))                 
+
+            # New in v1.4
+            #if self.IncludeLF is True:
+            if self.IncludeLF:
+                # At the moment I just put the redshift list by hand, but this part should be modified.
+                #NUM_OF_REDSHIFTS_FOR_LF = 4
+                for iz in range(len(self.Redshifts_For_LF)):
+                    # Exclude bright-end (Muv < -20) from Lumnosity function 
+                    Muv_i = []
+                    phi_i = []
+                    error_i = []
+                    j = 0 
+                    while j < len(self.Muv_values[iz]):
+                        if self.Muv_values[iz][j] > -20. and self.Muv_values[iz][j]!=0.:
+                            Muv_i.append(self.Muv_values[iz][j])
+                            phi_i.append(self.phi_values[iz][j])
+                            error_i.append(self.phi_Error[iz][j])
+                        j = j + 1  
+
+                    Muv_values_estimate0 = np.loadtxt('LF_estimate_%s_%s.txt'%(StringArgument_other,self.Redshifts_For_LF[iz]), usecols=(0,))
+                    log10phi_values_estimate0 = np.loadtxt('LF_estimate_%s_%s.txt'%(StringArgument_other,self.Redshifts_For_LF[iz]), usecols=(1,))
+                    Muv_values_estimate = Muv_values_estimate0[::-1]
+                    log10phi_values_estimate = log10phi_values_estimate0[::-1]
+
+                    LF_criterion = 1 #LF_criteion == 0: skip this chain.
+                    # check whether Muv does not increase monotonically with halo mass. if not interpolation is not possible.
+                    i_check = 0
+                    while i_check < len(Muv_values_estimate)-1:
+                        if (Muv_values_estimate[i_check] > Muv_values_estimate[i_check+1]):
+                            LF_criterion = 0
+                            #print ("Found Muv list reversed\n")
+                            break
+                        i_check = i_check + 1
+
+                    if (max(Muv_values_estimate) <= min(self.Muv_values[iz])) or (min(Muv_values_estimate) >= max(self.Muv_values[iz])):
+                        LF_criterion = 0
+                
+                    if (LF_criterion == 0):
+                        total_sum = total_sum + 10000000000.
+                    else:
+                        LFestimate_Spline = interpolate.splrep(Muv_values_estimate, log10phi_values_estimate,s=0)
+                        for ii in range(len(Muv_i)):
+                            Muv_i_val = Muv_i[ii]
+                            log10phi_i_val = interpolate.splev(Muv_i_val,LFestimate_Spline,der=0)
+                            #total_sum = total_sum + np.square(phi_i[ii] - 10**(log10phi_i_val)) / (np.square(error_i[ii]))
+                            chi2_i = np.square(phi_i[ii] - 10**(log10phi_i_val)) / (np.square(error_i[ii]))
+                            if (np.isinf(chi2_i)):
+                                chi2_i = 100000.
+                            total_sum = total_sum + chi2_i
+
 
             if self.FlagOptions['KEEP_ALL_DATA'] is True:
-
                 StoredFileLayout = string.join(StoredFileLayout,separator_column)
 
                 with open('%s/StatisticalData/TotalPSData_%s.txt'%(self.FlagOptions['KEEP_ALL_DATA_FILENAME'],StringArgument_other),'w') as f:            
@@ -458,9 +616,10 @@ class Likelihood21cmFast_multiz(object):
 
             # When the light-cone version is set, the values are writted in decreasing order, not increasing order
             # Therefore, reverse to be in increasing order (the interpolation/extrapolation is required to be in increasing order)
-            if z_Hist[0] > z_Hist[-1]:
-                z_Hist = z_Hist[::-1]
-                xH_Hist = xH_Hist[::-1]                            
+            if self.IncludeLightCone is True:
+                if z_Hist[0] > z_Hist[-1]:
+                    z_Hist = z_Hist[::-1]
+                    xH_Hist = xH_Hist[::-1]                            
 
         if (self.FlagOptions['KEEP_ALL_DATA'] is True or self.PriorLegend['PlanckPrior'] is True) and number_redshifts > 2:
 
@@ -525,7 +684,11 @@ class Likelihood21cmFast_multiz(object):
             if self.PriorLegend['PlanckPrior'] is True:
                 total_sum = total_sum + np.square( ( PlanckTau_Mean - tau_value )/(PlanckTau_OneSigma) )
 
-            # it is len(AllRedshifts) as the indexing begins at zero
+            #if self.IncludeLightCone is True:
+            #    nf_vals[1] = tau_value
+            #else:
+            #    # it is len(AllRedshifts) as the indexing begins at zero
+            #    nf_vals[len(AllRedshifts)+2] = tau_value
             nf_vals[len(AllRedshifts)+2] = tau_value
 
         if self.PriorLegend['McGreerPrior'] is True:
@@ -642,7 +805,6 @@ class Likelihood21cmFast_multiz(object):
                 QSO_Prob = -2.*np.log(QSO_Prob)
 
                 total_sum = total_sum + QSO_Prob
-
         
         if self.IncludeLightCone is True:
 
@@ -666,13 +828,32 @@ class Likelihood21cmFast_multiz(object):
                 else:
                     command = "rm %s"%(LightconePS[i])
                 os.system(command)
+
+            if self.FlagOptions['KEEP_ALL_DATA'] is True:
+                for j in range(len(self.Redshifts_For_LF)):
+                    command = "mv LF_estimate_%s_%s.txt %s/LFData/"%(StringArgument_other,self.Redshifts_For_LF[j],self.FlagOptions['KEEP_ALL_DATA_FILENAME'])
+                    os.system(command)
+            else:
+                for j in range(len(self.Redshifts_For_LF)):
+                    command = "rm LF_estimate_%s_%s.txt"%(StringArgument_other,self.Redshifts_For_LF[j])
+                    os.system(command)
         else:
             
-            command = "rm delTps_estimate_%s_*"%(StringArgument_other)
-            os.system(command)
+            if not self.IncludeLF is 2:
+                command = "rm delTps_estimate_%s_*"%(StringArgument_other)
+                os.system(command)
 
             command = "rm NeutralFraction_%s_*"%(StringArgument_other)
             os.system(command)
+
+            if self.FlagOptions['KEEP_ALL_DATA'] is True:
+                for j in range(len(self.Redshifts_For_LF)):
+                    command = "mv LF_estimate_%s_%s.txt %s/LFData/"%(StringArgument_other,self.Redshifts_For_LF[j],self.FlagOptions['KEEP_ALL_DATA_FILENAME'])
+                os.system(command)
+            else:
+                for j in range(len(self.Redshifts_For_LF)):
+                    command = "rm LF_estimate_%s_%s.txt"%(StringArgument_other,self.Redshifts_For_LF[j])
+                os.system(command)
 
         if OutputGlobalAve == 1:
             if self.FlagOptions['KEEP_ALL_DATA'] is True:
@@ -696,6 +877,8 @@ class Likelihood21cmFast_multiz(object):
             command = "rm WalkerCosmology_%s.txt"%(StringArgument_other)
             os.system(command) 
 
+        if(np.isinf(total_sum)):
+            total_sum = 10000000000.
         return -0.5*total_sum,nf_vals
 
     def computeLikelihood(self, ctx):

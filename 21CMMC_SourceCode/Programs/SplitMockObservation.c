@@ -3,6 +3,7 @@
 #include "../Parameter_files/HEAT_PARAMS.H"
 #include "../Parameter_files/Variables.h"
 
+
 // This file splits the 21cm cubic boxes used for the light-cone into smaller boxes (necessary for MCMC sampling) and computes the 21cm PS for each box
 // This is useful if the light-cone box is to be sampled within 21CMMC
 
@@ -158,42 +159,39 @@ int main(int argc, char ** argv){
                 k_x = n_x * (TWOPI/CUBIC_BOX_LENGTH);
         
             for (n_y=0; n_y<DIM_MOCK_OBS_CUBIC; n_y++){
-                
-                // avoid the k(k_x = 0, k_y = 0, k_z) modes
-                if(n_x != 0 && n_y != 0) {
-
-                    if (n_y>DIM_MOCK_OBS_CUBIC_MID)
-                        k_y =(n_y-(int)DIM_MOCK_OBS_CUBIC) * (TWOPI/CUBIC_BOX_LENGTH);
-                    else
-                        k_y = n_y * (TWOPI/CUBIC_BOX_LENGTH);
+				if(n_x != 0 && n_y != 0) {
+                if (n_y>DIM_MOCK_OBS_CUBIC_MID)
+                    k_y =(n_y-(int)DIM_MOCK_OBS_CUBIC) * (TWOPI/CUBIC_BOX_LENGTH);
+                else
+                    k_y = n_y * (TWOPI/CUBIC_BOX_LENGTH);
             
-                    for (n_z=0; n_z<=DIM_MOCK_OBS_MID; n_z++){
-                        k_z = n_z * (TWOPI/RED_BOX_LENGTH);
+                for (n_z=0; n_z<=DIM_MOCK_OBS_MID; n_z++){
+                    k_z = n_z * (TWOPI/RED_BOX_LENGTH);
                 
-                        k_mag = sqrt(k_x*k_x + k_y*k_y + k_z*k_z);
+                    k_mag = sqrt(k_x*k_x + k_y*k_y + k_z*k_z);
                 
-                        // now go through the k bins and update
-                        ct = 0;
-                        k_floor = 0;
-                        k_ceil = k_first_bin_ceil;
-                        while (k_ceil < k_max){
-                            // check if we fal in this bin
-                            if ((k_mag>=k_floor) && (k_mag < k_ceil)){
-                                in_bin_ct[ct]++;
-                                p_box[ct] += pow(k_mag,3)*pow(cabs(deldel_T_asymmetric[HII_LOS_RED_C_INDEX(n_x, n_y, n_z)]), 2)/(2.0*PI*PI*(CUBIC_BOX_LENGTH*CUBIC_BOX_LENGTH*RED_BOX_LENGTH));
-                                // note the 1/VOLUME factor, which turns this into a power density in k-space
+                    // now go through the k bins and update
+                    ct = 0;
+                    k_floor = 0;
+                    k_ceil = k_first_bin_ceil;
+                    while (k_ceil < k_max){
+                        // check if we fal in this bin
+                        if ((k_mag>=k_floor) && (k_mag < k_ceil)){
+                            in_bin_ct[ct]++;
+                            p_box[ct] += pow(k_mag,3)*pow(cabs(deldel_T_asymmetric[HII_LOS_RED_C_INDEX(n_x, n_y, n_z)]), 2)/(2.0*PI*PI*(CUBIC_BOX_LENGTH*CUBIC_BOX_LENGTH*RED_BOX_LENGTH));
+                            // note the 1/VOLUME factor, which turns this into a power density in k-space
                         
-                                k_ave[ct] += k_mag;
-                                break;
-                            }
-                    
-                            ct++;
-                            k_floor=k_ceil;
-                            k_ceil*=k_factor;
+                            k_ave[ct] += k_mag;
+                            break;
                         }
+                    
+                        ct++;
+                        k_floor=k_ceil;
+                        k_ceil*=k_factor;
                     }
                 }
             }
+			}
         }
         
         sprintf(filename, "delTps_estimate_carvedup_section_%d_%i_%.0fMpc_lighttravel.txt",jj, HII_DIM, BOX_LEN);

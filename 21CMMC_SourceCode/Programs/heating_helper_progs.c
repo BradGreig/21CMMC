@@ -20,6 +20,8 @@
 #define zpp_interp_points (int) (400)                  /* Number of interpolation points for the interpolation table for z'' */
 #define dens_Ninterp (int) (400)                       /* Number of interpolation points for the interpolation table for the value of the density field */
 
+//#define zpp_interp_points_SFR (int) (300)               /* Number of interpolation points for the interpolation table for z'' */
+
 
 /* Define some global variables; yeah i know it isn't "good practice" but doesn't matter */
 //double zpp_edge[NUM_FILTER_STEPS_FOR_Ts], sigma_atR[NUM_FILTER_STEPS_FOR_Ts], sigma_Tmin[NUM_FILTER_STEPS_FOR_Ts], ST_over_PS[NUM_FILTER_STEPS_FOR_Ts], sum_lyn[NUM_FILTER_STEPS_FOR_Ts];
@@ -34,6 +36,14 @@ int n_redshifts_1DTable;
 double zbin_width_1DTable,zmin_1DTable,zmax_1DTable,zbin_width_1DTable;
 
 double *FgtrM_1DTable_linear;
+
+// New in v1.4
+//int Nsteps_zp;
+float *second_derivs_Fcoll_zpp[NUM_FILTER_STEPS_FOR_Ts];
+float *redshift_interp_table;
+gsl_interp_accel *FcollLow_zpp_spline_acc[NUM_FILTER_STEPS_FOR_Ts];
+gsl_spline *FcollLow_zpp_spline[NUM_FILTER_STEPS_FOR_Ts];
+
 
 /* initialization routine */
 int init_heat();
@@ -400,7 +410,7 @@ void evolveInt(float zp, float curr_delNL0[], double freq_int_heat[], double fre
         dxion_source_dt *= const_zp_prefactor;
         if (COMPUTE_Ts){
             dxlya_dt *= const_zp_prefactor*n_b;
-            dstarlya_dt *= F_STAR * C * N_b0 / FOURPI;
+            dstarlya_dt *= F_STAR10 * C * N_b0 / FOURPI;
 
             /*
              if ((dxlya_dt < 0) || (dstarlya_dt<0)){
@@ -689,6 +699,11 @@ double tauX_integrand_approx(double zhat, void *params){
     
     int z_fcoll_int1,z_fcoll_int2;
     float z_fcoll_val1,z_fcoll_val2;
+	// New in v1.4
+	float Splined_Fcollz_mean;
+    
+    int redshift_int_fcollz;
+    float redshift_table_fcollz;
     
     tauX_params_approx *p = (tauX_params_approx *) params;
     
@@ -696,15 +711,26 @@ double tauX_integrand_approx(double zhat, void *params){
     n = N_b0 * pow(1+zhat, 3);
     nuhat = p->nu_0 * (1+zhat);
     
-    z_fcoll_int1 = (int)floor(( zhat - zmin_1DTable )/zbin_width_1DTable);
-    z_fcoll_int2 = z_fcoll_int1 + 1;
+	// New in v1.4
+	if (USE_MASS_DEPENDENT_ZETA) {
+//		FgtrM_st_SFR_z(zhat,&(Splined_Fcollz_mean));
+//		fcoll = Splined_Fcollz_mean;
+        redshift_int_fcollz = (int)floor( ( zhat - determine_zpp_min )/zpp_bin_width );
+        redshift_table_fcollz = determine_zpp_min + zpp_bin_width*(float)redshift_int_fcollz;
+        fcoll = Fcollz_val[redshift_int_fcollz] + ( zhat - redshift_table_fcollz )*( Fcollz_val[redshift_int_fcollz+1] - Fcollz_val[redshift_int_fcollz] )/(zpp_bin_width);
+
+	}
+	else {
+    	z_fcoll_int1 = (int)floor(( zhat - zmin_1DTable )/zbin_width_1DTable);
+    	z_fcoll_int2 = z_fcoll_int1 + 1;
     
-    z_fcoll_val1 = zmin_1DTable + zbin_width_1DTable*(float)z_fcoll_int1;
-    z_fcoll_val2 = zmin_1DTable + zbin_width_1DTable*(float)z_fcoll_int2;
+    	z_fcoll_val1 = zmin_1DTable + zbin_width_1DTable*(float)z_fcoll_int1;
+    	z_fcoll_val2 = zmin_1DTable + zbin_width_1DTable*(float)z_fcoll_int2;
     
-    fcoll = FgtrM_1DTable_linear[z_fcoll_int1] + ( zhat - z_fcoll_val1 )*( FgtrM_1DTable_linear[z_fcoll_int2] - FgtrM_1DTable_linear[z_fcoll_int1] )/( z_fcoll_val2 - z_fcoll_val1 );
+    	fcoll = FgtrM_1DTable_linear[z_fcoll_int1] + ( zhat - z_fcoll_val1 )*( FgtrM_1DTable_linear[z_fcoll_int2] - FgtrM_1DTable_linear[z_fcoll_int1] )/( z_fcoll_val2 - z_fcoll_val1 );
     
-    fcoll = pow(10.,fcoll);
+    	fcoll = pow(10.,fcoll);
+	}
 //    fcoll = FgtrM(zhat, get_M_min_ion(zhat));
     if (fcoll < 1e-20)
         HI_filling_factor_zhat = 1;
@@ -729,6 +755,11 @@ double tauX_approx(double nu, double x_e, double zp, double zpp, double HI_filli
     
     int z_fcoll_int1,z_fcoll_int2;
     float z_fcoll_val1,z_fcoll_val2;
+	// New in v1.4
+	float Splined_Fcollz_mean;
+    
+    int redshift_int_fcollz;
+    float redshift_table_fcollz;
     
     /*
      if (DEBUG_ON)
@@ -740,6 +771,18 @@ double tauX_approx(double nu, double x_e, double zp, double zpp, double HI_filli
     
     // effective efficiency for the PS (not ST) mass function; quicker to compute...
     if (HI_filling_factor_zp > FRACT_FLOAT_ERR){
+		// New in v1.4
+		if(USE_MASS_DEPENDENT_ZETA) {
+//			FgtrM_st_SFR_z(zp,&(Splined_Fcollz_mean));
+//			fcoll = Splined_Fcollz_mean;
+            
+            redshift_int_fcollz = (int)floor( ( zp - determine_zpp_min )/zpp_bin_width );
+            redshift_table_fcollz = determine_zpp_min + zpp_bin_width*(float)redshift_int_fcollz;
+            fcoll = Fcollz_val[redshift_int_fcollz] + ( zp - redshift_table_fcollz )*( Fcollz_val[redshift_int_fcollz+1] - Fcollz_val[redshift_int_fcollz] )/(zpp_bin_width);
+            
+			if (isnan(fcoll)) printf("In tauX_approx: zp=%.4f, fcoll=%.4e\n",zp,fcoll);
+		}
+		else {
 //        fcoll = FgtrM(zp, M_MIN_at_zp);
 
         z_fcoll_int1 = (int)floor(( zp - zmin_1DTable )/zbin_width_1DTable);
@@ -751,6 +794,7 @@ double tauX_approx(double nu, double x_e, double zp, double zpp, double HI_filli
         fcoll = FgtrM_1DTable_linear[z_fcoll_int1] + ( zp - z_fcoll_val1 )*( FgtrM_1DTable_linear[z_fcoll_int2] - FgtrM_1DTable_linear[z_fcoll_int1] )/( z_fcoll_val2 - z_fcoll_val1 );
 
         fcoll = pow(10.,fcoll);
+		}
         
         p.ion_eff = (1.0 - HI_filling_factor_zp) / fcoll * (1.0 - x_e_ave);
         PS_ION_EFF = p.ion_eff;
@@ -807,7 +851,8 @@ double nu_tau_one_approx(double zp, double zpp, double x_e, double HI_filling_fa
     
     // check if too ionized
     if (x_e > 0.9999){
-//        fprintf(stderr,"Ts.c: WARNING: x_e value is too close to 1 for convergence in nu_tau_one\n");
+		// Below is test line. After test comment out this line
+        //fprintf(stderr,"Ts.c: WARNING: x_e value is too close to 1 for convergence in nu_tau_one\n");
         return -1;
     }
     

@@ -15,7 +15,7 @@ def ICposition(start_positions_individual,lowerbounds,upperbounds,FiducialValues
         if (start_positions_individual[j] < lowerbounds[j] or start_positions_individual[j] > upperbounds[j]):
             new_start_parameter_logic = False
             while new_start_parameter_logic == False:
-                new_start_parameter = FiducialValues[j]+np.random.normal(size=1.0)*ParamWidths[j]
+                new_start_parameter = FiducialValues[j]+np.random.normal(size=int(1))*ParamWidths[j]
                 if (new_start_parameter > lowerbounds[j] and new_start_parameter < upperbounds[j]):
                     new_start_parameter_logic = True
 
@@ -52,8 +52,23 @@ class UniformPosition(object):
 
         InputValues = []
 
-        if self.sampler.param_legend['ALPHA'] is True:   
-            InputValues.append(self.sampler.FiducialParams['ALPHA'])
+        if self.sampler.param_legend['F_STAR10'] is True:   
+            InputValues.append(self.sampler.FiducialParams['F_STAR10'])
+
+        if self.sampler.param_legend['ALPHA_STAR'] is True:   
+            InputValues.append(self.sampler.FiducialParams['ALPHA_STAR'])
+
+        if self.sampler.param_legend['F_ESC10'] is True:   
+            InputValues.append(self.sampler.FiducialParams['F_ESC10'])
+
+        if self.sampler.param_legend['ALPHA_ESC'] is True:   
+            InputValues.append(self.sampler.FiducialParams['ALPHA_ESC'])
+
+        if self.sampler.param_legend['M_TURN'] is True:   
+            InputValues.append(self.sampler.FiducialParams['M_TURN'])
+
+        if self.sampler.param_legend['t_STAR'] is True:   
+            InputValues.append(self.sampler.FiducialParams['t_STAR'])
 
         if self.sampler.param_legend['ZETA'] is True:   
             InputValues.append(self.sampler.FiducialParams['ZETA'])    
