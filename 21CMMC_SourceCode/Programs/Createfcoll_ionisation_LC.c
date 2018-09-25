@@ -143,6 +143,9 @@ int main(int argc, char ** argv){
     }
     
     //set the minimum source mass
+	// New in v1.4
+	M_MIN = get_M_min_ion(REDSHIFT);
+	/*
     if (ION_Tvir_MIN > 0){ // use the virial temperature for Mmin
         if (ION_Tvir_MIN < 9.99999e3) // neutral IGM
             M_MIN = TtoM(REDSHIFT, ION_Tvir_MIN, 1.22);
@@ -152,6 +155,7 @@ int main(int argc, char ** argv){
     else if (ION_Tvir_MIN < 0){ // use the mass
         M_MIN = ION_M_MIN;
     }
+	*/
     // check for WDM
     
     if (P_CUTOFF && ( M_MIN < M_J_WDM())){
@@ -165,7 +169,8 @@ int main(int argc, char ** argv){
     MFEEDBACK = M_MIN;
     
     if(EFF_FACTOR_PL_INDEX != 0.) {
-        mean_f_coll_st = FgtrM_st_PL(REDSHIFT,M_MIN,MFEEDBACK,EFF_FACTOR_PL_INDEX);
+        //mean_f_coll_st = FgtrM_st_PL(REDSHIFT,M_MIN,MFEEDBACK,EFF_FACTOR_PL_INDEX);
+        mean_f_coll_st = FgtrM_st(REDSHIFT,M_MIN);
     }
     else {
         mean_f_coll_st = FgtrM_st(REDSHIFT, M_MIN);

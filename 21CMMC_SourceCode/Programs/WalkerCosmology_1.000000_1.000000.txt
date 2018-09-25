@@ -1,5 +1,5 @@
 RANDOM_SEED    323.000000
-SIGMA_8    0.820000
+SIGMA_8    0.810000
 hubble    0.680000
 Omega_M    0.310000
 Omega_L    0.69000

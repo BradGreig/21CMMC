@@ -96,6 +96,11 @@ Filter choice used for smoothing the linear density field to obtain the collapse
 */
 #define ZPRIME_STEP_FACTOR (float) 1.02
 
+/* New in v1.4: Nsteps_zp depends on ZPRIME_STEP_FACTOR. If ZPRIME_STEP_FACTOR is changed Nsteps_zp must be changed. 
+*/
+#define Nsteps_zp (int) 83
+//#define Nsteps_zp (int) 1
+
 
 /*
   If the following are >0, then the user chooses to overwrite the default boundary conditions

@@ -36,22 +36,19 @@
 
 //#define RANDOM_SEED (long) (1) // seed for the random number generator
 
-#define BOX_LEN (float) 75 // in Mpc
-//#define BOX_LEN (float) 300 // in Mpc
-//#define BOX_LEN (float) 600 // in Mpc
+//#define BOX_LEN (float) 250 // in Mpc
+#define BOX_LEN (float) 100 // in Mpc
 
-#define DIM (int) 150 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define DIM (int) 600 // number of cells for the high-res box (sampling ICs) along a principal axis
-//#define DIM (int) 1200 // number of cells for the high-res box (sampling ICs) along a principal axis
+//#define DIM (int) 512 // number of cells for the high-res box (sampling ICs) along a principal axis
+#define DIM (int) 200 // number of cells for the high-res box (sampling ICs) along a principal axis
 
 // to avoid sampling issues, DIM should be at least 3 or 4 times HII_DIM, and an integer multiple)
+//#define HII_DIM (int) 128 // number of cells for the low-res box
 #define HII_DIM (int) 50 // number of cells for the low-res box
-//#define HII_DIM (int) 200 // number of cells for the low-res box
-//#define HII_DIM (int) 600 // number of cells for the low-res box
 
 /****** New in v1.1. ****** Threading parameters  ***/
 #define NUMCORES (int) 1 // # of cores you wish to allocate (must be shared mem)
-#define RAM (float) 16 // physical memory in GB available
+#define RAM (float) 8 // physical memory in GB available
 /******** END USER CHANGABLE DEFINITIONS   **********/
 
 #include "ANAL_PARAMS.H"

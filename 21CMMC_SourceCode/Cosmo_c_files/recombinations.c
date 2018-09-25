@@ -65,7 +65,10 @@ void init_beta_MHR(); /*initializes the lookup table for the beta paremeter in M
 double splined_recombination_rate(double z_eff, double gamma12_bg){
   int z_ct = (int) (z_eff / RR_DEL_Z + 0.5); // round to nearest int
   double lnGamma = log(gamma12_bg);
-
+  // check if gamma12 = 0
+  if (isnan(lnGamma) || isinf(lnGamma)) {
+	return 0;
+  }
   // check out of bounds
   if ( z_ct < 0 ){ // out of array bounds
 //    fprintf(stderr, "WARNING: splined_recombination_rate: effective redshift %g is outside of array bouds\n", z_eff);
