@@ -895,6 +895,8 @@ if __name__ == '__main__':
 		os.system(command)
 		command = "mkdir %s/StatisticalData"%(Create_Output_Directory)
 		os.system(command)
+		command = "mkdir %s/StatisticalData_Error"%(Create_Output_Directory)
+		os.system(command)
 		command = "mkdir %s/TauData"%(Create_Output_Directory)
 		os.system(command)
 		command = "mkdir %s/WalkerData"%(Create_Output_Directory)
