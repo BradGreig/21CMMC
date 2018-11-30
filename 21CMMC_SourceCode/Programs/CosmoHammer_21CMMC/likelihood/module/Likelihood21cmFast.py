@@ -92,7 +92,9 @@ class Likelihood21cmFast_multiz(object):
 
 
         StoredStatisticalData = []
+        StoredStatisticalData_Error = []
         StoredFileLayout = []
+        StoredFileLayout_Error = []
 
         separator_column = "\t"
 
@@ -473,6 +475,27 @@ class Likelihood21cmFast_multiz(object):
                 #nf_vals[0] = 'Walker_%s.txt'%(StringArgument_other)
                 nf_vals[0] = 0.#'Walker_%s.txt'%(StringArgument_other)
 
+                for i in range(len(self.Redshift)):                
+                    k_values_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(0,)) 
+                    PS_values_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(1,))
+                    Poisson_error_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(2,)) # Read possion errors
+
+                    if self.FlagOptions['KEEP_ALL_DATA'] is True:
+                        if not self.IncludeLF is 2:
+                            if i == 0:
+                                StoredStatisticalData.append(k_values_estimate)
+                                StoredFileLayout.append("{%i}"%(i))
+
+                                StoredStatisticalData_Error.append(k_values_estimate)
+                                StoredFileLayout_Error.append("{%i}"%(i))
+
+                            StoredStatisticalData.append(PS_values_estimate)
+                            StoredFileLayout.append("{%i}"%(i+1))
+
+                            StoredStatisticalData_Error.append(Poisson_error_estimate)
+                            StoredFileLayout_Error.append("{%i}"%(i+1))
+
+
             else:
 
                 for i in range(len(AllRedshifts)):                                
@@ -484,21 +507,26 @@ class Likelihood21cmFast_multiz(object):
                     # This only reading the data in from file, and then saving it to output
                     # Yes, I end up reading twice, but whatever...
                     # (I split it in the case that Redshifts_for_Prior was non-zero)
-                    if self.IncludeLightCone is True:
-                        k_values_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(0,)) 
-                        PS_values_estimate = np.loadtxt('%s'%(LightconePS[i]), usecols=(1,))
-                    elif not self.IncludeLF is 2:
+                    if not self.IncludeLF is 2:
                         k_values_estimate = np.loadtxt('delTps_estimate_%s_%s.txt'%(StringArgument_other,AllRedshifts[i]), usecols=(0,))
                         PS_values_estimate = np.loadtxt('delTps_estimate_%s_%s.txt'%(StringArgument_other,AllRedshifts[i]), usecols=(1,))
+                        Poisson_error_estimate = np.loadtxt('delTps_estimate_%s_%s.txt'%(StringArgument_other,AllRedshifts[i]), usecols=(2,))
 
-                    if self.FlagOptions['KEEP_ALL_DATA'] is True:
-                        if not self.IncludeLF is 2:
+                        if self.FlagOptions['KEEP_ALL_DATA'] is True:
                             if i == 0:
                                 StoredStatisticalData.append(k_values_estimate)
                                 StoredFileLayout.append("{%i}"%(i))
 
+                                StoredStatisticalData_Error.append(k_values_estimate)
+                                StoredFileLayout_Error.append("{%i}"%(i))
+
+
                             StoredStatisticalData.append(PS_values_estimate)
                             StoredFileLayout.append("{%i}"%(i+1))
+
+                            StoredStatisticalData_Error.append(Poisson_error_estimate)
+                            StoredFileLayout_Error.append("{%i}"%(i+1))
+
 
 #                nf_vals[len(AllRedshifts)] = 'Walker_%s.txt'%(StringArgument_other)
             nf_vals[len(AllRedshifts)] = '%s'%(Individual_ID)
@@ -602,10 +630,16 @@ class Likelihood21cmFast_multiz(object):
 
             if self.FlagOptions['KEEP_ALL_DATA'] is True:
                 StoredFileLayout = string.join(StoredFileLayout,separator_column)
+                StoredFileLayout_Error = string.join(StoredFileLayout_Error,separator_column)
 
                 with open('%s/StatisticalData/TotalPSData_%s.txt'%(self.FlagOptions['KEEP_ALL_DATA_FILENAME'],StringArgument_other),'w') as f:            
                     for x in zip(*StoredStatisticalData):
                         f.write("%s\n"%(StoredFileLayout).format(*x))
+
+                with open('%s/StatisticalData_Error/TotalPS_ErrorData_%s.txt'%(self.FlagOptions['KEEP_ALL_DATA_FILENAME'],StringArgument_other),'w') as f:            
+                    for x in zip(*StoredStatisticalData_Error):
+                        f.write("%s\n"%(StoredFileLayout_Error).format(*x))
+
 
                 f.close()
 
@@ -823,10 +857,7 @@ class Likelihood21cmFast_multiz(object):
 
             # Removal of the individual light cone files is done here as in principle these can exceed the number of mock observations provided
             for i in range(len(LightconePS)):
-                if self.FlagOptions['KEEP_ALL_DATA'] is True:
-                    command = "mv %s %s/StatisticalData/"%(LightconePS[i],self.FlagOptions['KEEP_ALL_DATA_FILENAME'])
-                else:
-                    command = "rm %s"%(LightconePS[i])
+                command = "rm %s"%(LightconePS[i])
                 os.system(command)
 
             if self.FlagOptions['KEEP_ALL_DATA'] is True:
