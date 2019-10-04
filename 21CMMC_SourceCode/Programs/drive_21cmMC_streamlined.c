@@ -862,10 +862,10 @@ void ComputeTsBoxes() {
     growth_factor_z = dicke(REDSHIFT);
     inverse_growth_factor_z = 1./growth_factor_z;
     
-    /*if (X_RAY_Tvir_MIN < 9.99999e3) // neutral IGM
+    if (X_RAY_Tvir_MIN < 9.99999e3) // neutral IGM
         mu_for_Ts = 1.22;
     else // ionized IGM
-        mu_for_Ts = 0.6;*/
+        mu_for_Ts = 0.6;
     
     //set the minimum ionizing source mass
     // In v1.4 the miinimum ionizing source mass does not depend on redshift.
@@ -874,7 +874,7 @@ void ComputeTsBoxes() {
     // exponentially decrease below M_TURNOVER Msun, : fduty \propto e^(- M_TURNOVER / M)
     // In this case, we define M_MIN = M_TURN/50, i.e. the M_MIN is integration limit to compute follapse fraction.
     //M_MIN_at_z = get_M_min_ion(REDSHIFT);
-    if (!USE_MASS_DEPENDENT_ZETA) M_MIN = M_TURN;
+//     if (!USE_MASS_DEPENDENT_ZETA) M_MIN = M_TURN;
     
     // Initialize some interpolation tables
     init_heat();
@@ -1221,11 +1221,11 @@ void ComputeTsBoxes() {
         	for(i=0;i<zpp_interp_points;i++) {
             	zpp_grid = determine_zpp_min + (determine_zpp_max - determine_zpp_min)*(float)i/((float)zpp_interp_points-1.0);
         
-            	//Sigma_Tmin_grid[i] = sigma_z0(FMAX(TtoM(zpp_grid, X_RAY_Tvir_MIN, mu_for_Ts),  M_MIN_WDM));
-            	//ST_over_PS_arg_grid[i] = FgtrM_st(zpp_grid, FMAX(TtoM(zpp_grid, X_RAY_Tvir_MIN, mu_for_Ts),  M_MIN_WDM));
+            	Sigma_Tmin_grid[i] = sigma_z0(FMAX(TtoM(zpp_grid, X_RAY_Tvir_MIN, mu_for_Ts),  M_MIN_WDM));
+            	ST_over_PS_arg_grid[i] = FgtrM_st(zpp_grid, FMAX(TtoM(zpp_grid, X_RAY_Tvir_MIN, mu_for_Ts),  M_MIN_WDM));
 				// New in v1.4: halo mass does not depend on Tvir
-            	Sigma_Tmin_grid[i] = sigma_z0(M_MIN);
-            	ST_over_PS_arg_grid[i] = FgtrM_st(zpp_grid, M_MIN);
+//             	Sigma_Tmin_grid[i] = sigma_z0(M_MIN);
+//             	ST_over_PS_arg_grid[i] = FgtrM_st(zpp_grid, M_MIN);
         	}
         
         	// Create the interpolation tables for the derivative of the collapsed fraction and the collapse fraction itself
@@ -1291,7 +1291,8 @@ void ComputeTsBoxes() {
         			NO_LIGHT = 0; 
             }
     		else {
-      			if (FgtrM(zp, M_MIN) < 1e-15 )
+			if (FgtrM(zp, FMAX(TtoM(zp, X_RAY_Tvir_MIN, mu_for_Ts),  M_MIN_WDM)) < 1e-15 )
+//       			if (FgtrM(zp, M_MIN) < 1e-15 )
         			NO_LIGHT = 1; 
       			else 
         			NO_LIGHT = 0; 
@@ -1302,7 +1303,8 @@ void ComputeTsBoxes() {
 				filling_factor_of_HI_zp = 1 - ION_EFF_FACTOR * Splined_Fcollzp_mean / (1.0 - x_e_ave);
 			}
 			else {
-            	filling_factor_of_HI_zp = 1 - ION_EFF_FACTOR * FgtrM_st(zp, M_MIN) / (1.0 - x_e_ave);
+				filling_factor_of_HI_zp = 1 - ION_EFF_FACTOR * FgtrM_st(zp, (FMAX(TtoM(zp, X_RAY_Tvir_MIN, mu_for_Ts),  M_MIN_WDM))) / (1.0 - x_e_ave);
+				//             	filling_factor_of_HI_zp = 1 - ION_EFF_FACTOR * FgtrM_st(zp, M_MIN) / (1.0 - x_e_ave);
 			}
             if (filling_factor_of_HI_zp > 1) filling_factor_of_HI_zp=1;
             
@@ -2176,7 +2178,11 @@ void ComputeIonisationBoxes(int sample_index, float REDSHIFT_SAMPLE, float PREV_
         Mlim_Fesc = Mass_limit_bisection(M_MIN, 1e16, ALPHA_ESC, F_ESC10);
     }    
     else {
-        M_MIN = M_TURNOVER;
+//         M_MIN = M_TURNOVER;
+	    if (ION_Tvir_MIN < 9.99999e3) // neutral IGM
+            M_MIN = TtoM(REDSHIFT_SAMPLE, ION_Tvir_MIN, 1.22);
+        else // ionized IGM
+            M_MIN = TtoM(REDSHIFT_SAMPLE, ION_Tvir_MIN, 0.6);
     }    
     // check for WDM
 
