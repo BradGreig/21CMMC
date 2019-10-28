@@ -2989,7 +2989,23 @@ void ComputeIonisationBoxes(int sample_index, float REDSHIFT_SAMPLE, float PREV_
         
         // Wisdoms will already exists, so do not need to search for them or create them (created earlier in this function if don't already exist)
         if(USE_FFTW_WISDOM) {
-            plan = fftwf_plan_dft_r2c_3d(HII_DIM, HII_DIM, HII_DIM, (float *)vel_gradient, (fftwf_complex *)vel_gradient, FFTW_WISDOM_ONLY);
+		
+	    // Check to see if wisdom exists, if not create it
+            sprintf(wisdom_filename,"../FFTW_Wisdoms/real_to_complex_%d.fftwf_wisdom",HII_DIM);
+            if(fftwf_import_wisdom_from_filename(wisdom_filename)!=0) {
+                plan = fftwf_plan_dft_r2c_3d(HII_DIM, HII_DIM, HII_DIM, (float *)vel_gradient, (fftwf_complex *)vel_gradient, FFTW_WISDOM_ONLY);
+            }
+            else {
+                plan = fftwf_plan_dft_r2c_3d(HII_DIM, HII_DIM, HII_DIM, (float *)vel_gradient, (fftwf_complex *)vel_gradient, FFTW_PATIENT);
+                fftwf_execute(plan);
+                
+                // Store the wisdom for later use
+                fftwf_export_wisdom_to_filename(wisdom_filename);
+                
+                memcpy(vel_gradient, v, sizeof(fftwf_complex)*HII_KSPACE_NUM_PIXELS);
+                
+                plan = fftwf_plan_dft_r2c_3d(HII_DIM, HII_DIM, HII_DIM, (float *)vel_gradient, (fftwf_complex *)vel_gradient, FFTW_WISDOM_ONLY);
+            }
         }
         else {
             plan = fftwf_plan_dft_r2c_3d(HII_DIM, HII_DIM, HII_DIM, (float *)vel_gradient, (fftwf_complex *)vel_gradient, FFTW_ESTIMATE);
