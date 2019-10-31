@@ -3045,54 +3045,54 @@ void ComputeIonisationBoxes(int sample_index, float REDSHIFT_SAMPLE, float PREV_
         
         if(USE_FFTW_WISDOM) {
 		
-		    sprintf(wisdom_filename,"../FFTW_Wisdoms/complex_to_real_%d.fftwf_wisdom",HII_DIM);
+            sprintf(wisdom_filename,"../FFTW_Wisdoms/complex_to_real_%d.fftwf_wisdom",HII_DIM);
             if(fftwf_import_wisdom_from_filename(wisdom_filename)!=0) {
                 plan = fftwf_plan_dft_c2r_3d(HII_DIM, HII_DIM, HII_DIM, (fftwf_complex *)vel_gradient, (float *)vel_gradient, FFTW_WISDOM_ONLY);
-	   		}
-			else {
-				plan = fftwf_plan_dft_c2r_3d(HII_DIM, HII_DIM, HII_DIM, (fftwf_complex *)vel_gradient, (float *)vel_gradient, FFTW_PATIENT);
+            }
+            else {
+                plan = fftwf_plan_dft_c2r_3d(HII_DIM, HII_DIM, HII_DIM, (fftwf_complex *)vel_gradient, (float *)vel_gradient, FFTW_PATIENT);
                 fftwf_execute(plan);
                 
                 // Store the wisdom for later use
                 fftwf_export_wisdom_to_filename(wisdom_filename);
                 
-				// vel_gradient has now been over-written, so need to re-do the velocity gradient calculation
+                // vel_gradient has now been over-written, so need to re-do the velocity gradient calculation
                 memcpy(vel_gradient, v, sizeof(fftwf_complex)*HII_KSPACE_NUM_PIXELS);
 				
-				// FFT the velocity gradient (Wisdom was already created before so no need to check)
-				plan = fftwf_plan_dft_r2c_3d(HII_DIM, HII_DIM, HII_DIM, (float *)vel_gradient, (fftwf_complex *)vel_gradient, FFTW_WISDOM_ONLY);
+                // FFT the velocity gradient (Wisdom was already created before so no need to check)
+                plan = fftwf_plan_dft_r2c_3d(HII_DIM, HII_DIM, HII_DIM, (float *)vel_gradient, (fftwf_complex *)vel_gradient, FFTW_WISDOM_ONLY);
                 fftwf_execute(plan);
 				
-				// Now re-calculate the velocity gradient
-				for (n_x=0; n_x<HII_DIM; n_x++){
-    		        if (n_x>HII_MIDDLE)
-            		    k_x =(n_x-HII_DIM) * DELTA_K;  // wrap around for FFT convention
-            		else
-		                k_x = n_x * DELTA_K;
+                // Now re-calculate the velocity gradient
+                for (n_x=0; n_x<HII_DIM; n_x++){
+    		    if (n_x>HII_MIDDLE)
+            		k_x =(n_x-HII_DIM) * DELTA_K;  // wrap around for FFT convention
+                    else
+                        k_x = n_x * DELTA_K;
             
-        		    for (n_y=0; n_y<HII_DIM; n_y++){
-                		if (n_y>HII_MIDDLE)
-                    		k_y =(n_y-HII_DIM) * DELTA_K;
-                		else
-                    		k_y = n_y * DELTA_K;
+                    for (n_y=0; n_y<HII_DIM; n_y++){
+                        if (n_y>HII_MIDDLE)
+                            k_y =(n_y-HII_DIM) * DELTA_K;
+                        else
+                            k_y = n_y * DELTA_K;
                 
-		                for (n_z=0; n_z<=HII_MIDDLE; n_z++){
-        		            k_z = n_z * DELTA_K;
+                        for (n_z=0; n_z<=HII_MIDDLE; n_z++){
+                            k_z = n_z * DELTA_K;
                  	   
-                    		// take partial deriavative along the line of sight
-		                    switch(VELOCITY_COMPONENT){
-        		                case 1:
-                		            *((fftwf_complex *) vel_gradient + HII_C_INDEX(n_x,n_y,n_z)) *= k_x*I/(float)HII_TOT_NUM_PIXELS;
-                        		    break;
-                        		case 3:
-                            		*((fftwf_complex *) vel_gradient + HII_C_INDEX(n_x,n_y,n_z)) *= k_z*I/(float)HII_TOT_NUM_PIXELS;
-                            		break;
-                        		default:
-                            		*((fftwf_complex *) vel_gradient + HII_C_INDEX(n_x,n_y,n_z)) *= k_y*I/(float)HII_TOT_NUM_PIXELS;
-                   	 		}
-                		}
-            		}
-        		}
+                            // take partial deriavative along the line of sight
+                            switch(VELOCITY_COMPONENT){
+                                case 1:
+                                    *((fftwf_complex *) vel_gradient + HII_C_INDEX(n_x,n_y,n_z)) *= k_x*I/(float)HII_TOT_NUM_PIXELS;
+                                    break;
+                                case 3:
+                                    *((fftwf_complex *) vel_gradient + HII_C_INDEX(n_x,n_y,n_z)) *= k_z*I/(float)HII_TOT_NUM_PIXELS;
+                                    break;
+                                default:
+                                    *((fftwf_complex *) vel_gradient + HII_C_INDEX(n_x,n_y,n_z)) *= k_y*I/(float)HII_TOT_NUM_PIXELS;
+                            }
+                        }
+                    }
+                }
 				
                 plan = fftwf_plan_dft_c2r_3d(HII_DIM, HII_DIM, HII_DIM, (fftwf_complex *)vel_gradient, (float *)vel_gradient, FFTW_WISDOM_ONLY);
             }
